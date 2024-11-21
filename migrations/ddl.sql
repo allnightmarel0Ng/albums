@@ -1,7 +1,6 @@
 DROP TABLE IF EXISTS public.order_items;
 DROP TABLE IF EXISTS public.orders;
 DROP TABLE IF EXISTS public.tracks;
-DROP TABLE IF EXISTS public.genres;
 DROP TABLE IF EXISTS public.albums;
 DROP TABLE IF EXISTS public.customers;
 DROP TABLE IF EXISTS public.artists;
@@ -11,7 +10,7 @@ DROP TYPE IF EXISTS role;
 CREATE TYPE role AS ENUM ('artist', 'customer');
 CREATE TABLE public.users (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     role role NOT NULL,
@@ -33,11 +32,6 @@ CREATE TABLE public.artists (
     bio TEXT
 );
 
-CREATE TABLE public.genres (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL -- todo: enum
-);
-
 CREATE TABLE public.albums (
     id SERIAL PRIMARY KEY,
     artist_id INT REFERENCES public.artists(id) ON DELETE SET NULL,
@@ -45,7 +39,7 @@ CREATE TABLE public.albums (
     release_date DATE NOT NULL,
     cover_art_url VARCHAR(255),
     price MONEY NOT NULL,
-    genre INT REFERENCES public.artists(id) ON DELETE SET NULL
+    genre VARCHAR(50)
 );
 
 CREATE TABLE public.tracks (
