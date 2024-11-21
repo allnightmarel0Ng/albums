@@ -1,0 +1,36 @@
+services:
+  postgres:
+    build:
+      context: ..
+      dockerfile: deployments/postgres/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+    ports:
+      - "${POSTGRES_PORT_INCREMENTED}:${POSTGRES_PORT}"
+    volumes:
+      - albums-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+  init-postgres:
+    image: postgres:13-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "
+      psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/ddl.sql
+      "
+    volumes:
+      - ../migrations:/migrations
+volumes:
+  albums-data:
