@@ -14,15 +14,15 @@ type Database interface {
 
 	Close()
 
-	Begin() error
-	Commit() error
-	Rollback() error
+	// Begin() error
+	// Commit() error
+	// Rollback() error
 }
 
 type db struct {
 	pool *pgxpool.Pool
 	ctx  context.Context
-	tx   pgx.Tx
+	// tx   pgx.Tx
 }
 
 func NewDatabase(ctx context.Context, connectionString string) (Database, error) {
@@ -34,7 +34,6 @@ func NewDatabase(ctx context.Context, connectionString string) (Database, error)
 	return &db{
 		pool: pool,
 		ctx:  ctx,
-		tx:   nil,
 	}, nil
 }
 
@@ -42,12 +41,12 @@ func (db *db) Query(sql string, args ...interface{}) (Rows, error) {
 	var rows pgx.Rows
 	var err error
 
-	switch {
-	case db.tx == nil:
-		rows, err = db.pool.Query(db.ctx, sql, args...)
-	case db.tx != nil:
-		rows, err = db.tx.Query(db.ctx, sql, args...)
-	}
+	rows, err = db.pool.Query(db.ctx, sql, args...)
+	// switch {
+	// case db.tx == nil:
+	// case db.tx != nil:
+	// 	rows, err = db.tx.Query(db.ctx, sql, args...)
+	// }
 
 	if err != nil {
 		return nil, err
@@ -59,12 +58,12 @@ func (db *db) Query(sql string, args ...interface{}) (Rows, error) {
 func (db *db) QueryRow(sql string, args ...interface{}) Row {
 	var row pgx.Row
 
-	switch {
-	case db.tx == nil:
-		row = db.pool.QueryRow(db.ctx, sql, args...)
-	case db.tx != nil:
-		row = db.pool.QueryRow(db.ctx, sql, args...)
-	}
+	row = db.pool.QueryRow(db.ctx, sql, args...)
+	// switch {
+	// case db.tx == nil:
+	// case db.tx != nil:
+	// 	row = db.pool.QueryRow(db.ctx, sql, args...)
+	// }
 
 	return NewRow(row)
 }
@@ -73,32 +72,36 @@ func (db *db) Close() {
 	db.pool.Close()
 }
 
-func (db *db) Begin() error {
-	tx, err := db.pool.Begin(db.ctx)
-	if err != nil {
-		return err
-	}
+// func (db *db) Begin() error {
+// 	tx, err := db.pool.Begin(db.ctx)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	db.tx = tx
-	return nil
-}
+// 	db.tx = tx
+// 	return nil
+// }
 
-func (db *db) Commit() error {
-	err := db.tx.Commit(db.ctx)
-	if err != nil {
-		return err
-	}
+// func (db *db) Commit() error {
+// 	if db.tx == nil {
+// 		return errors.New("unable to commit transaction that don't exist")
+// 	}
+	
+// 	err := db.tx.Commit(db.ctx)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	db.tx = nil
-	return nil
-}
+// 	db.tx = nil
+// 	return nil
+// }
 
-func (db *db) Rollback() error {
-	err := db.tx.Rollback(db.ctx)
-	if err != nil {
-		return err
-	}
+// func (db *db) Rollback() error {
+// 	err := db.tx.Rollback(db.ctx)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	db.tx = nil
-	return nil
-}
+// 	db.tx = nil
+// 	return nil
+// }
