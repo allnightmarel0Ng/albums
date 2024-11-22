@@ -29,8 +29,34 @@ services:
     command: |
       "
       psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/ddl.sql
+      psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/dml.sql
       "
     volumes:
       - ../migrations:/migrations
+  authorization:
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: authorization
+        SERVICE_PORT: ${AUTHORIZATION_PORT}
+    ports:
+      - "${AUTHORIZATION_PORT}:${AUTHORIZATION_PORT}"
+    depends_on:
+      postgres: 
+        condition: service_healthy
+    init: true
+  gateway:
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: gateway
+        SERVICE_PORT: ${GATEWAY_PORT}
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+    depends_on:
+      - authorization
+    init: true
 volumes:
   albums-data:

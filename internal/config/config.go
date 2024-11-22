@@ -13,6 +13,7 @@ type Config struct {
 	PostgresPassword  string
 	JwtSecretKey      string
 	AuthorizationPort string
+	GatewayPort       string
 }
 
 func LoadConfig() (*Config, error) {
@@ -28,5 +29,6 @@ func LoadConfig() (*Config, error) {
 		PostgresPassword:  os.Getenv("POSTGRES_PASSWORD"),
 		JwtSecretKey:      os.Getenv("JWT_SECRET_KEY"),
 		AuthorizationPort: os.Getenv("AUTHORIZATION_PORT"),
+		GatewayPort:       os.Getenv("GATEWAY_PORT"),
 	}, nil
 }

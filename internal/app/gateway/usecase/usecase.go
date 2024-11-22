@@ -2,14 +2,15 @@ package usecase
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 )
 
 type GatewayUseCase interface {
-	Authorization(string) (string, int, error)
+	Authorization(string) (model.AuthorizationResponse)
 }
 
 type gatewayUseCase struct {
@@ -22,11 +23,14 @@ func NewGatewayUseCase(authorizationPort string) GatewayUseCase {
 	}
 }
 
-func (g *gatewayUseCase) interprocessCommunicationError() (string, int, error) {
-	return "", http.StatusInternalServerError, errors.New("interprocess communication error")
+func (g *gatewayUseCase) interprocessCommunicationError() model.AuthorizationResponse {
+	return model.AuthorizationResponse{
+		Code: http.StatusInternalServerError,
+		Error: "interprocess communication error",
+	}
 }
 
-func (g *gatewayUseCase) Authorization(authHeader string) (string, int, error) {
+func (g *gatewayUseCase) Authorization(authHeader string) model.AuthorizationResponse {
 	request, err := http.NewRequest("GET", fmt.Sprintf("http://authorization:%s/", g.authorizationPort), nil)
 	if err != nil {
 		return g.interprocessCommunicationError()
@@ -35,7 +39,7 @@ func (g *gatewayUseCase) Authorization(authHeader string) (string, int, error) {
 	request.Header.Set("Authorization", authHeader)
 
 	client := &http.Client{}
-    response, err := client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return g.interprocessCommunicationError()
 	}
@@ -46,11 +50,8 @@ func (g *gatewayUseCase) Authorization(authHeader string) (string, int, error) {
 		return g.interprocessCommunicationError()
 	}
 
-	var data struct {
-		Code int `json:"code"`
-		Jwt string `json:"jwt"`
-	}
+	var data model.AuthorizationResponse
 
 	json.Unmarshal(body, &data)
-	return data.Jwt, http.StatusOK, nil
+	return data
 }

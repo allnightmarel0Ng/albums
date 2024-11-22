@@ -9,14 +9,15 @@ const (
 	authorizationSql = `SELECT 
 							email,
 							role,
-							created_at
+							created_at,
+							password_hash
 						FROM public.users
-						WHERE email = $1 AND password = $2;`
+						WHERE email = $1;`
 )
 
 type UserRepository interface {
 	GetDatabase() postgres.Database
-	Authorize(email, passwordHash string) (model.User, error)
+	Authorize(email string) (model.User, string, error)
 }
 
 type userRepository struct {
@@ -33,10 +34,11 @@ func (u *userRepository) GetDatabase() postgres.Database {
 	return u.db
 }
 
-func (u *userRepository) Authorize(email string, passwordHash string) (model.User, error) {
+func (u *userRepository) Authorize(email string) (model.User, string, error) {
 	var result model.User
+	var passwordHash string
 
-	err := u.db.QueryRow(authorizationSql, email, passwordHash).Scan(&result.Email, &result.Role, &result.CreatedAt)
+	err := u.db.QueryRow(authorizationSql, email).Scan(&result.Email, &result.Role, &result.CreatedAt, &passwordHash)
 
-	return result, err
+	return result, passwordHash, err
 }

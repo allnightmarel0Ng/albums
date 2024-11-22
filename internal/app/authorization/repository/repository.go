@@ -1,14 +1,12 @@
 package repository
 
 import (
-	"errors"
-
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/domain/repository"
 )
 
 type AuthorizationRepository interface {
-	Authorize(email, passwordHash string) (model.User, error)
+	Authorize(email string) (model.User, string, error)
 }
 
 type authorizationRepository struct {
@@ -21,11 +19,11 @@ func NewAuthorizationRepository(users repository.UserRepository) AuthorizationRe
 	}
 }
 
-func (a *authorizationRepository) Authorize(email, passwordHash string) (model.User, error) {
-	result, err := a.users.Authorize(email, passwordHash)
+func (a *authorizationRepository) Authorize(email string) (model.User, string, error) {
+	result, hash, err := a.users.Authorize(email)
 	if err != nil {
-		err = errors.New("unable to find such user in database")
+		return model.User{}, "", err
 	}
 
-	return result, err
+	return result, hash, err
 }

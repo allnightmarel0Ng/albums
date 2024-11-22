@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -25,12 +26,14 @@ func NewAuthorizationHandler(useCase usecase.AuthorizationUseCase) Authorization
 
 func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
 	authData := c.GetHeader("Authorization")
+	log.Printf("got new authorization token: %s", authData)
+
 	if authData == "" || !strings.HasPrefix(authData, "Basic ") {
 		utils.Send(c, http.StatusBadRequest, "error", "bad authorization base64 token")
 		return
 	}
 
-	jwt, code, err := a.useCase.Authorize(authData[len("Basic"):])
+	jwt, code, err := a.useCase.Authorize(authData[len("Basic "):])
 	if err != nil {
 		utils.Send(c, code, "error", err.Error())
 		return

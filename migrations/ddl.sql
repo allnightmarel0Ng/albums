@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.artists;
 DROP TABLE IF EXISTS public.users;
 DROP TYPE IF EXISTS role;
 
-CREATE TYPE role AS ENUM ('artist', 'customer');
+CREATE TYPE role AS ENUM ('artist', 'customer', 'admin');
 CREATE TABLE public.users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE,
@@ -21,7 +21,7 @@ CREATE TABLE public.customers (
     user_id INT REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    balance MONEY NOT NULL,
+    balance MONEY NOT NULL
 );
 
 CREATE TABLE public.artists (

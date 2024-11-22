@@ -86,7 +86,7 @@ func (db *db) Close() {
 // 	if db.tx == nil {
 // 		return errors.New("unable to commit transaction that don't exist")
 // 	}
-	
+
 // 	err := db.tx.Commit(db.ctx)
 // 	if err != nil {
 // 		return err

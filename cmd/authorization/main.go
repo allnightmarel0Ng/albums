@@ -28,7 +28,7 @@ func main() {
 	defer db.Close()
 
 	repo := repository.NewAuthorizationRepository(domainRepository.NewUserRepository(db))
-	useCase := usecase.NewAuthorizationUseCase(repo, conf.JwtSecretKey)
+	useCase := usecase.NewAuthorizationUseCase(repo, []byte(conf.JwtSecretKey))
 	handler := handler.NewAuthorizationHandler(useCase)
 
 	router := gin.Default()
