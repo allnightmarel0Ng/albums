@@ -21,7 +21,7 @@ CREATE TABLE public.customers (
     user_id INT REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    balance MONEY NOT NULL
+    balance DECIMAL(10, 2) NOT NULL
 );
 
 CREATE TABLE public.artists (
@@ -38,7 +38,7 @@ CREATE TABLE public.albums (
     name VARCHAR(50) NOT NULL,
     release_date DATE NOT NULL,
     cover_art_url VARCHAR(255),
-    price MONEY NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
     genre VARCHAR(50)
 );
 
@@ -46,7 +46,6 @@ CREATE TABLE public.tracks (
     id SERIAL PRIMARY KEY,
     album_id INT REFERENCES public.artists(id) ON DELETE SET NULL,
     name VARCHAR(50) NOT NULL,
-    number INT NOT NULL,
     duration INT NOT NULL,
     audio_file_url VARCHAR(255) NOT NULL
 );
@@ -55,7 +54,7 @@ CREATE TABLE public.orders (
     id SERIAL PRIMARY KEY,
     customer_id INT REFERENCES public.customers(id) ON DELETE SET NULL,
     date TIMESTAMP NOT NULL DEFAULT NOW(),
-    total_price MONEY NOT NULL
+    total_price DECIMAL(10, 2) NOT NULL
 );
 
 CREATE TABLE public.order_items (
@@ -63,5 +62,5 @@ CREATE TABLE public.order_items (
     order_id INT REFERENCES public.orders(id) ON DELETE CASCADE,
     album_id INT REFERENCES public.albums(id) ON DELETE SET NULL,
     quantity INT NOT NULL,
-    price MONEY NOT NULL
+    price DECIMAL(10, 2) NOT NULL
 );
