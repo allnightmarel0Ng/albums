@@ -1,16 +1,18 @@
 package handler
 
 import (
-	"log"
 	"net/http"
+	"strings"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/gateway/usecase"
+	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type GatewayHandler interface {
 	HandleLogin(c *gin.Context)
+	HandleMainPage(c *gin.Context)
 }
 
 type gatewayHandler struct {
@@ -24,15 +26,18 @@ func NewGatewayHandler(useCase usecase.GatewayUseCase) GatewayHandler {
 }
 
 func (g *gatewayHandler) HandleLogin(c *gin.Context) {
-	response := g.useCase.Authorization(c.GetHeader("Authorization"))
+	utils.Send(c, g.useCase.Authorization(c.GetHeader("Authorization")))
+}
 
-	log.Printf("response: %v", response)
-	
-	switch {
-	case response.Code == http.StatusOK:
-		utils.Send(c, response.Code, "jwt", response.Jwt)
-	default:
-		utils.Send(c, response.Code, "error", response.Error)
+func (g *gatewayHandler) HandleMainPage(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &model.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
 	}
 
+	utils.Send(c, g.useCase.MainPage(authHeader[len("Bearer "):]))
 }

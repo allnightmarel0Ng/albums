@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	authorizationSql = `SELECT 
+	authorizationSql = /* sql */ `SELECT 
 							email,
 							role,
 							created_at,

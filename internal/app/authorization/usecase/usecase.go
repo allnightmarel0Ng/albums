@@ -3,7 +3,6 @@ package usecase
 import (
 	"encoding/base64"
 	"errors"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -30,26 +29,25 @@ func NewAuthorizationUseCase(repo repository.AuthorizationRepository, jwtSecretK
 }
 
 func (a *authorizationUseCase) Authorize(b64 string) (string, int, error) {
-	unsplittedCredentials, err := base64.StdEncoding.DecodeString(b64)
+	rawCredentials, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
 		return "", http.StatusBadRequest, errors.New("error parsing base64")
 	}
 
-	credentials := strings.Split(string(unsplittedCredentials), ":")
+	credentials := strings.Split(string(rawCredentials), ":")
 	if len(credentials) != 2 {
 		return "", http.StatusBadRequest, errors.New("wrong authorization format")
 	}
 
 	user, hash, err := a.repo.Authorize(credentials[0])
-	log.Printf("user: %v, hash: %s, password: %s", user, hash, credentials[1])
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(credentials[1])) != nil {
-		return "", http.StatusNotFound, errors.New("email or password mismatch")
+		return "", http.StatusUnauthorized, errors.New("email or password mismatch")
 	}
 
 	result, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"email": user.Email,
 		"role":  user.Role,
-		"exp":   time.Now().Add(time.Hour * 72).Unix(),
+		"exp":   time.Now().Add(time.Hour).Unix(),
 	}).SignedString(a.jwtSecretKey)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.New("unable to create jwt key")

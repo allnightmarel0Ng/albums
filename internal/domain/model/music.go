@@ -9,12 +9,11 @@ type Album struct {
 	CoverArtUrl string    `json:"coverArtUrl"`
 	Price       float64   `json:"price"`
 	Genre       string    `json:"genre"`
+	Tracks      []Track   `json:"tracks"`
 }
 
 type Track struct {
-	Album        Album  `json:"album"`
 	Name         string `json:"name"`
-	Number       uint   `json:"number"`
 	Duration     uint   `json:"duration"`
 	AudioFileUrl string `json:"audioFileUrl"`
 }
