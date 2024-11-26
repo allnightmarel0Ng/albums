@@ -1,12 +1,11 @@
 package repository
 
 import (
-	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/domain/repository"
 )
 
 type AuthorizationRepository interface {
-	Authorize(email string) (model.User, string, error)
+	GetIDPasswordHash(email string) (int, string, bool, error)
 }
 
 type authorizationRepository struct {
@@ -19,11 +18,6 @@ func NewAuthorizationRepository(users repository.UserRepository) AuthorizationRe
 	}
 }
 
-func (a *authorizationRepository) Authorize(email string) (model.User, string, error) {
-	result, hash, err := a.users.Authorize(email)
-	if err != nil {
-		return model.User{}, "", err
-	}
-
-	return result, hash, err
+func (a *authorizationRepository) GetIDPasswordHash(email string) (int, string, bool, error) {
+	return a.users.GetIDPasswordHash(email)
 }

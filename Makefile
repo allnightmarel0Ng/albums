@@ -12,3 +12,6 @@ run:
 
 down:
 	@${PREFIX} down
+
+logs:
+	@${PREFIX} logs ${AT}

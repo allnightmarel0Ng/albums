@@ -8,28 +8,66 @@ import (
 )
 
 const (
-	geAlbumsLikeNameSQL = /* sql */ `SELECT 
-							a.name,
-							a.profile_picture_url,
-							a.bio,
-							al.id,
-							al.name,
-							al.release_date,
-							al.cover_art_url,
-							al.price,
-							al.genre,
-							t.name,
-							t.duration,
-							t.audio_file_url
-						FROM public.tracks AS t
-						LEFT JOIN public.albums AS al ON t.album_id = al.id
-						JOIN public.artists AS a ON al.artist_id = a.id
-						WHERE al.name LIKE $1
-						ORDER BY al.id;`
+	selectUsersPurchasedAlbumsSQL =
+	/* sql */ `SELECT
+					a.id,
+					a.name,
+					ar.id,
+					ar.name,
+					ar.genre,
+					ar.image_url,
+					a.image_url,
+					a.price,
+					t.id,
+					t.name,
+					t.number
+				FROM public.purchased_albums AS pu
+				JOIN public.albums AS a ON pu.album_id = a.id
+				JOIN public.artists AS ar ON a.artist_id = ar.id
+				RIGHT JOIN public.tracks AS t ON t.album_id = a.id
+				WHERE pu.user_id = $1;`
+
+	selectAlbumsLikeNameSQL =
+	/* sql */ `SELECT 
+					a.id,
+					a.name,
+					ar.id,
+					ar.name,
+					ar.genre,
+					ar.image_url,
+					a.image_url,
+					a.price,
+					t.id,
+					t.name,
+					t.number
+				FROM public.tracks AS t
+				LEFT JOIN public.albums AS a ON t.album_id = a.id
+				JOIN public.artists AS ar ON a.artist_id = ar.id
+				WHERE a.name LIKE $1;`
+
+	selectArtistsAlbumsSQL =
+	/* sql */ `SELECT
+					a.id,
+					a.name,
+					ar.id,
+					ar.name,
+					ar.genre,
+					ar.image_url,
+					a.image_url,
+					a.price,
+					t.id,
+					t.name,
+					t.number
+				FROM public.tracks AS t
+				LEFT JOIN public.albums AS a ON t.album_id = a.id
+				JOIN public.artists AS ar ON a.artist_id = ar.id
+				WHERE ar.id = $1;`
 )
 
 type AlbumRepository interface {
+	GetUsersPurchasedAlbums(userID int) ([]model.Album, error)
 	GetAllAlbumsLike(name string) ([]model.Album, error)
+	GetArtistsAlbums(artistID int) ([]model.Album, error)
 }
 
 type albumRepository struct {
@@ -42,56 +80,78 @@ func NewAlbumRepository(db postgres.Database) AlbumRepository {
 	}
 }
 
-func (a *albumRepository) GetAllAlbumsLike(name string) ([]model.Album, error) {
-	tokens := strings.Split(name, " ")
+func albumsFromRows(rows postgres.Rows) ([]model.Album, error) {
+	albumsMap := make(map[int]*model.Album)
 
-	var sb strings.Builder
-	sb.WriteByte('%')
+	for rows.Next() {
+		var (
+			album model.Album
+			track model.Track
+		)
 
-	for _, token := range tokens {
-		_, err := sb.Write([]byte(token))
+		err := rows.Scan(&album.ID, &album.Name, &album.Author.ID,
+			&album.Author.Name, &album.Author.Genre, &album.Author.ImageURL, &album.ImageURL, &album.Price,
+			&track.ID, &track.Name, &track.Number)
 		if err != nil {
 			return nil, err
 		}
+
+		_, ok := albumsMap[album.ID]
+		if !ok {
+			album.Tracks = []model.Track{track}
+			albumsMap[album.ID] = &album
+		} else {
+			albumsMap[album.ID].Tracks = append(albumsMap[album.ID].Tracks, track)
+		}
 	}
 
-	if len(tokens) != 0 {
-		sb.WriteByte('%')
+	result := make([]model.Album, len(albumsMap))
+	i := 0
+	for _, v := range albumsMap {
+		result[i] = *v
+		i++
 	}
 
-	rows, err := a.db.Query(geAlbumsLikeNameSQL, sb.String())
+	return result, nil
+}
+
+func (a *albumRepository) GetUsersPurchasedAlbums(userID int) ([]model.Album, error) {
+	rows, err := a.db.Query(selectUsersPurchasedAlbumsSQL, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var result []model.Album
-	prevAlbumID := -1
-	var currentAlbumTracks []model.Track
+	return albumsFromRows(rows)
+}
 
-	for rows.Next() {
-		var (
-			track   model.Track
-			album   model.Album
-			albumID int
-		)
+func (a *albumRepository) GetAllAlbumsLike(name string) ([]model.Album, error) {
+	tokens := strings.Split(name, " ")
+	var sb strings.Builder
 
-		err = rows.Scan(&album.Artist.Name, &album.Artist.ProfilePictureUrl, &album.Artist.Bio, &albumID, &album.Name, &album.ReleaseDate, &album.CoverArtUrl, &album.Price, &album.Genre, &track.Name, &track.Duration, &track.AudioFileUrl)
-		if err != nil {
-			return nil, err
-		}
-
-		currentAlbumTracks = append(currentAlbumTracks, track)
-
-		if albumID != prevAlbumID && prevAlbumID != -1 {
-			album.Tracks = make([]model.Track, len(currentAlbumTracks))
-			copy(album.Tracks, currentAlbumTracks)
-			result = append(result, album)
-			currentAlbumTracks = []model.Track{}
-		}
-
-		prevAlbumID = albumID
+	sb.WriteRune('%')
+	for _, token := range tokens {
+		sb.WriteString(token)
 	}
 
-	return result, nil
+	if len(tokens) > 0 {
+		sb.WriteRune('%')
+	}
+
+	rows, err := a.db.Query(selectAlbumsLikeNameSQL, sb.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return albumsFromRows(rows)
+}
+
+func (a *albumRepository) GetArtistsAlbums(artistID int) ([]model.Album, error) {
+	rows, err := a.db.Query(selectArtistsAlbumsSQL, artistID)
+	if err != nil {
+		return nil, err
+	}
+
+	return albumsFromRows(rows)
 }

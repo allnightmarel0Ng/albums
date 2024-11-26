@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/authorization/usecase"
-	"github.com/allnightmarel0Ng/albums/internal/domain/model"
+	"github.com/allnightmarel0Ng/albums/internal/domain/api"
 	"github.com/allnightmarel0Ng/albums/internal/utils"
 	"github.com/gin-gonic/gin"
 )
@@ -29,7 +29,7 @@ func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
 	authData := c.GetHeader("Authorization")
 
 	if authData == "" || !strings.HasPrefix(authData, "Basic ") {
-		utils.Send(c, &model.AuthorizationResponse{
+		utils.Send(c, &api.AuthorizationResponse{
 			Code:  http.StatusBadRequest,
 			Error: "bad authorization base64 token",
 		})
@@ -38,7 +38,7 @@ func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
 
 	jwt, code, err := a.useCase.Authorize(authData[len("Basic "):])
 	if err != nil {
-		utils.Send(c, &model.AuthorizationResponse{
+		utils.Send(c, &api.AuthorizationResponse{
 			Code:  code,
 			Error: err.Error(),
 		})
@@ -46,7 +46,7 @@ func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
 	}
 
 	log.Printf("jwt: %s", jwt)
-	utils.Send(c, &model.AuthorizationResponse{
+	utils.Send(c, &api.AuthorizationResponse{
 		Code: code,
 		Jwt:  jwt,
 	})

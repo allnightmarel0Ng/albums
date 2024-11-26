@@ -1,66 +1,74 @@
-DROP TABLE IF EXISTS public.order_items;
-DROP TABLE IF EXISTS public.orders;
-DROP TABLE IF EXISTS public.tracks;
-DROP TABLE IF EXISTS public.albums;
-DROP TABLE IF EXISTS public.customers;
-DROP TABLE IF EXISTS public.artists;
-DROP TABLE IF EXISTS public.users;
-DROP TYPE IF EXISTS role;
+DROP TABLE IF EXISTS public.notifications CASCADE;
+DROP TABLE IF EXISTS public.buy_logs CASCADE;
+DROP TABLE IF EXISTS public.order_items CASCADE;
+DROP TABLE IF EXISTS public.orders CASCADE;
+DROP TABLE IF EXISTS public.purchased_albums CASCADE;
+DROP TABLE IF EXISTS public.tracks CASCADE;
+DROP TABLE IF EXISTS public.albums CASCADE;
+DROP TABLE IF EXISTS public.artists CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
 
-CREATE TYPE role AS ENUM ('artist', 'customer', 'admin');
 CREATE TABLE public.users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    role role NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE public.customers (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    first_name VARCHAR(50) NOT NULL,
-    last_name VARCHAR(50) NOT NULL,
-    balance DECIMAL(10, 2) NOT NULL
+    password_hash VARCHAR(70) NOT NULL,
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    nickname VARCHAR(30) NOT NULL,
+    balance DECIMAL(10, 2) NOT NULL,
+    image_url VARCHAR(255) NOT NULL DEFAULT ''
 );
 
 CREATE TABLE public.artists (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    name VARCHAR(100) NOT NULL,
-    profile_picture_url VARCHAR(100),
-    bio TEXT
+    name VARCHAR(512) NOT NULL,
+    genre VARCHAR(64) NOT NULL,
+    image_url VARCHAR(128) NOT NULL
 );
 
 CREATE TABLE public.albums (
     id SERIAL PRIMARY KEY,
+    name VARCHAR(512) NOT NULL,
     artist_id INT REFERENCES public.artists(id) ON DELETE SET NULL,
-    name VARCHAR(50) NOT NULL,
-    release_date DATE NOT NULL,
-    cover_art_url VARCHAR(255),
-    price DECIMAL(10, 2) NOT NULL,
-    genre VARCHAR(50)
+    image_url VARCHAR(128) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL
 );
 
 CREATE TABLE public.tracks (
     id SERIAL PRIMARY KEY,
-    album_id INT REFERENCES public.artists(id) ON DELETE SET NULL,
-    name VARCHAR(50) NOT NULL,
-    duration INT NOT NULL,
-    audio_file_url VARCHAR(255) NOT NULL
+    album_id INT REFERENCES public.albums(id) ON DELETE SET NULL,
+    name VARCHAR(512) NOT NULL,
+    number INT NOT NULL
+);
+
+CREATE TABLE public.purchased_albums (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES public.users(id) ON DELETE CASCADE,
+    album_id INT REFERENCES public.albums(id) ON DELETE CASCADE 
 );
 
 CREATE TABLE public.orders (
     id SERIAL PRIMARY KEY,
-    customer_id INT REFERENCES public.customers(id) ON DELETE SET NULL,
-    date TIMESTAMP NOT NULL DEFAULT NOW(),
-    total_price DECIMAL(10, 2) NOT NULL
+    user_id INT REFERENCES public.users(id) ON DELETE SET NULL,
+    date DATE NOT NULL DEFAULT NOW(),
+    total_price DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    is_paid BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE public.order_items (
     id SERIAL PRIMARY KEY,
     order_id INT REFERENCES public.orders(id) ON DELETE CASCADE,
+    album_id INT REFERENCES public.albums(id) ON DELETE SET NULL
+);
+
+CREATE TABLE public.buy_logs (
+    id SERIAL PRIMARY KEY,
+    buyer_id INT REFERENCES public.users(id) ON DELETE SET NULL,
     album_id INT REFERENCES public.albums(id) ON DELETE SET NULL,
-    quantity INT NOT NULL,
-    price DECIMAL(10, 2) NOT NULL
+    logging_time TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE public.notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES public.users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL
 );

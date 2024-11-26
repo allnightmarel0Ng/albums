@@ -6,18 +6,28 @@ import (
 )
 
 const (
-	authorizationSql = /* sql */ `SELECT 
-							email,
-							role,
-							created_at,
-							password_hash
-						FROM public.users
-						WHERE email = $1;`
+	selectIDPasswordHashByEmailSQL =
+	/* sql */ `SELECT
+					id,
+					password_hash,
+					is_admin
+				FROM public.users
+				WHERE email = $1;`
+	selectUserByEmailSQL =
+	/* sql */ `SELECT
+					id,
+					email,
+					is_admin,
+					nickname,
+					balance,
+					image_url
+				FROM public.users
+				WHERE id = $1;`
 )
 
 type UserRepository interface {
-	GetDatabase() postgres.Database
-	Authorize(email string) (model.User, string, error)
+	GetIDPasswordHash(email string) (int, string, bool, error)
+	GetUser(id int) (model.User, error)
 }
 
 type userRepository struct {
@@ -30,15 +40,24 @@ func NewUserRepository(db postgres.Database) UserRepository {
 	}
 }
 
-func (u *userRepository) GetDatabase() postgres.Database {
-	return u.db
+func (u *userRepository) GetIDPasswordHash(email string) (int, string, bool, error) {
+	var (
+		id           int
+		passwordHash string
+		isAdmin      bool
+	)
+
+	err := u.db.QueryRow(selectIDPasswordHashByEmailSQL, email).Scan(&id, &passwordHash, &isAdmin)
+	return id, passwordHash, isAdmin, err
 }
 
-func (u *userRepository) Authorize(email string) (model.User, string, error) {
+func (u *userRepository) GetUser(id int) (model.User, error) {
 	var result model.User
-	var passwordHash string
 
-	err := u.db.QueryRow(authorizationSql, email).Scan(&result.Email, &result.Role, &result.CreatedAt, &passwordHash)
+	err := u.db.QueryRow(selectUserByEmailSQL, id).Scan(&result.ID, &result.Email, &result.IsAdmin, &result.Nickname, &result.Balance, &result.ImageURL)
+	if err != nil {
+		return model.User{}, err
+	}
 
-	return result, passwordHash, err
+	return result, err
 }

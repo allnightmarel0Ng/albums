@@ -39,15 +39,15 @@ func (a *authorizationUseCase) Authorize(b64 string) (string, int, error) {
 		return "", http.StatusBadRequest, errors.New("wrong authorization format")
 	}
 
-	user, hash, err := a.repo.Authorize(credentials[0])
+	id, hash, isAdmin, err := a.repo.GetIDPasswordHash(credentials[0])
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(credentials[1])) != nil {
 		return "", http.StatusUnauthorized, errors.New("email or password mismatch")
 	}
 
 	result, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": user.Email,
-		"role":  user.Role,
-		"exp":   time.Now().Add(time.Hour).Unix(),
+		"id":      id,
+		"isAdmin": isAdmin,
+		"exp":     time.Now().Add(time.Hour).Unix(),
 	}).SignedString(a.jwtSecretKey)
 	if err != nil {
 		return "", http.StatusInternalServerError, errors.New("unable to create jwt key")

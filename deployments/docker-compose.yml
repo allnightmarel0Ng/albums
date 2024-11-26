@@ -14,7 +14,7 @@ services:
       - albums-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
     
@@ -30,9 +30,11 @@ services:
       "
       psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/ddl.sql
       psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/dml.sql
+      psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/dal.sql
       "
     volumes:
       - ../migrations:/migrations
+
   authorization:
     build:
       context: ..
@@ -46,6 +48,21 @@ services:
       postgres: 
         condition: service_healthy
     init: true
+
+  profile:
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: profile
+        SERVICE_PORT: ${PROFILE_PORT}
+    ports:
+      - "${PROFILE_PORT}:${PROFILE_PORT}"
+    depends_on:
+      postgres: 
+        condition: service_healthy
+    init: true
+
   gateway:
     build:
       context: ..
@@ -57,6 +74,8 @@ services:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     depends_on:
       - authorization
+      - postgres
     init: true
+    
 volumes:
   albums-data:

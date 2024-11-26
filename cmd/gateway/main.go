@@ -27,12 +27,14 @@ func main() {
 	}
 
 	repo := repository.NewGatewayRepository(domainRepository.NewAlbumRepository(db))
-	useCase := usecase.NewGatewayUseCase(repo, conf.AuthorizationPort, conf.JwtSecretKey)
+	useCase := usecase.NewGatewayUseCase(repo, conf.AuthorizationPort, conf.ProfilePort, conf.JwtSecretKey)
 	handler := handler.NewGatewayHandler(useCase)
 
 	router := gin.Default()
 	router.GET("/login", handler.HandleLogin)
 	router.GET("/", handler.HandleMainPage)
+	router.GET("/artists/:id", handler.HandleArtistProfile)
+	router.GET("/profile", handler.HandleUserProfile)
 
 	log.Fatal(http.ListenAndServe(":"+conf.GatewayPort, router))
 }

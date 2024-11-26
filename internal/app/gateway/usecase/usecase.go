@@ -3,45 +3,40 @@ package usecase
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/gateway/repository"
-	"github.com/allnightmarel0Ng/albums/internal/domain/model"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/allnightmarel0Ng/albums/internal/domain/api"
+	"github.com/allnightmarel0Ng/albums/internal/utils"
 )
 
 type GatewayUseCase interface {
-	Authorization(authHeader string) model.Response
-	MainPage(authHeader string) model.Response
+	Authorization(authHeader string) api.Response
+	MainPage(authHeader string) api.Response
+	UserProfile(jwtToken string) api.Response
+	ArtistProfile(id int) api.Response
 }
 
 type gatewayUseCase struct {
 	repo              repository.GatewayRepository
 	authorizationPort string
+	profilePort       string
 	jwtSecretKey      string
 }
 
-func NewGatewayUseCase(repo repository.GatewayRepository, authorizationPort, jwtSecretKey string) GatewayUseCase {
+func NewGatewayUseCase(repo repository.GatewayRepository, authorizationPort, profilePort, jwtSecretKey string) GatewayUseCase {
 	return &gatewayUseCase{
 		repo:              repo,
 		authorizationPort: authorizationPort,
+		profilePort:       profilePort,
 		jwtSecretKey:      jwtSecretKey,
 	}
 }
 
-func (g *gatewayUseCase) interprocessCommunicationError() model.Response {
-	return &model.AuthorizationResponse{
-		Code:  http.StatusInternalServerError,
-		Error: "interprocess communication error",
-	}
-}
-
-func (g *gatewayUseCase) Authorization(authHeader string) model.Response {
+func (g *gatewayUseCase) Authorization(authHeader string) api.Response {
 	request, err := http.NewRequest("GET", fmt.Sprintf("http://authorization:%s/", g.authorizationPort), nil)
 	if err != nil {
-		return g.interprocessCommunicationError()
+		return utils.InterserviceCommunicationError()
 	}
 
 	request.Header.Set("Authorization", authHeader)
@@ -49,109 +44,104 @@ func (g *gatewayUseCase) Authorization(authHeader string) model.Response {
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return g.interprocessCommunicationError()
+		return utils.InterserviceCommunicationError()
 	}
 	defer response.Body.Close()
 
-	var result model.AuthorizationResponse
+	var result api.AuthorizationResponse
 	json.NewDecoder(response.Body).Decode(&result)
-	log.Printf("got from auth microservice: %v", result)
 	return &result
 }
 
-func (g *gatewayUseCase) MainPage(jwtToken string) model.Response {
-	data := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(jwtToken, data, func(token *jwt.Token) (interface{}, error) {
-		return []byte(g.jwtSecretKey), nil
-	})
-
+func (g *gatewayUseCase) UserProfile(jwtToken string) api.Response {
+	claims, err := utils.GetJWTClaims(jwtToken, g.jwtSecretKey)
 	if err != nil {
-		if err == jwt.ErrSignatureInvalid {
-			return &model.AlbumsResponse{
-				Code:  http.StatusUnauthorized,
-				Error: "invalid token signature",
-			}
-		}
-		if ve, ok := err.(*jwt.ValidationError); ok {
-			if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return &model.AlbumsResponse{
-					Code:  http.StatusUnauthorized,
-					Error: "token has expired",
-				}
-			}
-		}
-		return &model.AlbumsResponse{
-			Code:  http.StatusBadRequest,
-			Error: "unparsable jwt",
-		}
-	}
-
-	if !token.Valid {
-		return &model.AlbumsResponse{
+		return &api.AlbumsResponse{
 			Code:  http.StatusUnauthorized,
-			Error: "invalid token",
+			Error: err.Error(),
 		}
 	}
 
-	exp, ok := data["exp"]
-	if !ok {
-		return &model.AlbumsResponse{
-			Code:  http.StatusUnprocessableEntity,
-			Error: "invalid jwt token: missing 'exp' claim",
-		}
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://profile:%s/users/%d", g.profilePort, claims.ID), nil)
+	if err != nil {
+		return utils.InterserviceCommunicationError()
 	}
 
-	expFloat, ok := exp.(float64)
-	if !ok {
-		return &model.AlbumsResponse{
-			Code:  http.StatusUnprocessableEntity,
-			Error: "invalid jwt token: 'exp' claim is not a number",
-		}
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return utils.InterserviceCommunicationError()
+	}
+	defer response.Body.Close()
+
+	var result api.UserProfileResponse
+	json.NewDecoder(response.Body).Decode(&result)
+	return &result
+}
+
+func (g *gatewayUseCase) ArtistProfile(id int) api.Response {
+	request, err := http.NewRequest("GET", fmt.Sprintf("http://profile:%s/artists/%d", g.profilePort, id), nil)
+	if err != nil {
+		return utils.InterserviceCommunicationError()
 	}
 
-	if time.Now().After(time.Unix(int64(expFloat), 0)) {
-		return &model.AlbumsResponse{
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return utils.InterserviceCommunicationError()
+	}
+	defer response.Body.Close()
+
+	var result api.ArtistProfileResponse
+	json.NewDecoder(response.Body).Decode(&result)
+	return &result
+}
+
+func (g *gatewayUseCase) MainPage(jwtToken string) api.Response {
+	claims, err := utils.GetJWTClaims(jwtToken, g.jwtSecretKey)
+	if err != nil {
+		return &api.AlbumsResponse{
 			Code:  http.StatusUnauthorized,
-			Error: "authorization time has expired",
+			Error: err.Error(),
 		}
 	}
 
-	role, ok := data["role"]
-	if !ok {
-		return &model.AlbumsResponse{
-			Code:  http.StatusUnprocessableEntity,
-			Error: "invalid jwt token",
-		}
-	}
+	// userID, err := utils.SafelyCastJWTClaim[float64](data, "id")
+	// if err != nil {
+	// 	return &api.AlbumsResponse{
+	// 		Code:  http.StatusUnprocessableEntity,
+	// 		Error: err.Error(),
+	// 	}
+	// }
 
-	switch role.(string) {
-	case "customer":
-		return g.customerMainPage()
+	switch claims.IsAdmin {
+	case false:
+		return g.nonAdminMainPage()
 	default:
-		return &model.AlbumsResponse{
+		return &api.AlbumsResponse{
 			Code:  http.StatusNotImplemented,
 			Error: "not yet implemented",
 		}
 	}
 }
 
-func (g *gatewayUseCase) customerMainPage() model.Response {
+func (g *gatewayUseCase) nonAdminMainPage() api.Response {
 	albums, err := g.repo.GetAllAlbums()
 	if err != nil {
-		return &model.AlbumsResponse{
+		return &api.AlbumsResponse{
 			Code:  http.StatusInternalServerError,
 			Error: "retrieving from db error",
 		}
 	}
 
 	if albums == nil {
-		return &model.AlbumsResponse{
+		return &api.AlbumsResponse{
 			Code:  http.StatusNotFound,
 			Error: "no albums found",
 		}
 	}
 
-	return &model.AlbumsResponse{
+	return &api.AlbumsResponse{
 		Code: http.StatusOK,
 		Data: albums,
 	}
