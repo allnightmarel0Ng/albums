@@ -1,11 +1,13 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/allnightmarel0Ng/albums/internal/domain/repository"
 )
 
 type AuthorizationRepository interface {
-	GetIDPasswordHash(email string) (int, string, bool, error)
+	GetIDPasswordHash(ctx context.Context, email string) (int, string, bool, error)
 }
 
 type authorizationRepository struct {
@@ -18,6 +20,6 @@ func NewAuthorizationRepository(users repository.UserRepository) AuthorizationRe
 	}
 }
 
-func (a *authorizationRepository) GetIDPasswordHash(email string) (int, string, bool, error) {
-	return a.users.GetIDPasswordHash(email)
+func (a *authorizationRepository) GetIDPasswordHash(ctx context.Context, email string) (int, string, bool, error) {
+	return a.users.GetIDPasswordHash(ctx, email)
 }

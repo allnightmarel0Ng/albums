@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
 )
@@ -17,7 +19,7 @@ const (
 )
 
 type ArtistRepository interface {
-	GetArtistByID(id int) (model.Artist, error)
+	GetArtistByID(ctx context.Context, id int) (model.Artist, error)
 }
 
 type artistRepository struct {
@@ -30,8 +32,8 @@ func NewArtistRepository(db postgres.Database) ArtistRepository {
 	}
 }
 
-func (a *artistRepository) GetArtistByID(id int) (model.Artist, error) {
+func (a *artistRepository) GetArtistByID(ctx context.Context, id int) (model.Artist, error) {
 	var result model.Artist
-	err := a.db.QueryRow(selectArtistByID, id).Scan(&result.ID, &result.Name, &result.Genre, &result.ImageURL)
+	err := a.db.QueryRow(ctx, selectArtistByID, id).Scan(&result.ID, &result.Name, &result.Genre, &result.ImageURL)
 	return result, err
 }

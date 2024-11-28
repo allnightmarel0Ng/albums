@@ -1,12 +1,14 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/domain/repository"
 )
 
 type GatewayRepository interface {
-	GetAllAlbums() ([]model.Album, error)
+	GetAllAlbums(ctx context.Context) ([]model.Album, error)
 }
 
 type gatewayRepository struct {
@@ -19,6 +21,6 @@ func NewGatewayRepository(albums repository.AlbumRepository) GatewayRepository {
 	}
 }
 
-func (g *gatewayRepository) GetAllAlbums() ([]model.Album, error) {
-	return g.albums.GetAllAlbumsLike("")
+func (g *gatewayRepository) GetAllAlbums(ctx context.Context) ([]model.Album, error) {
+	return g.albums.GetAllAlbumsLike(ctx, "")
 }

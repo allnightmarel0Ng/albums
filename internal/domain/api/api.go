@@ -82,9 +82,9 @@ func (a *UserProfileResponse) GetKeyValue() (string, interface{}) {
 }
 
 type ArtistProfileResponse struct {
-	Code     int           `json:"code"`
-	Error    string        `json:"error,omitempty"`
-	Albums   []model.Album `json:"albums,omitempty"`
+	Code   int           `json:"code"`
+	Error  string        `json:"error,omitempty"`
+	Albums []model.Album `json:"albums,omitempty"`
 }
 
 func (a *ArtistProfileResponse) GetCode() int {

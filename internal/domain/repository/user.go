@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
 )
@@ -26,8 +28,8 @@ const (
 )
 
 type UserRepository interface {
-	GetIDPasswordHash(email string) (int, string, bool, error)
-	GetUser(id int) (model.User, error)
+	GetIDPasswordHash(ctx context.Context, email string) (int, string, bool, error)
+	GetUser(ctx context.Context, id int) (model.User, error)
 }
 
 type userRepository struct {
@@ -40,21 +42,21 @@ func NewUserRepository(db postgres.Database) UserRepository {
 	}
 }
 
-func (u *userRepository) GetIDPasswordHash(email string) (int, string, bool, error) {
+func (u *userRepository) GetIDPasswordHash(ctx context.Context, email string) (int, string, bool, error) {
 	var (
 		id           int
 		passwordHash string
 		isAdmin      bool
 	)
 
-	err := u.db.QueryRow(selectIDPasswordHashByEmailSQL, email).Scan(&id, &passwordHash, &isAdmin)
+	err := u.db.QueryRow(ctx, selectIDPasswordHashByEmailSQL, email).Scan(&id, &passwordHash, &isAdmin)
 	return id, passwordHash, isAdmin, err
 }
 
-func (u *userRepository) GetUser(id int) (model.User, error) {
+func (u *userRepository) GetUser(ctx context.Context, id int) (model.User, error) {
 	var result model.User
 
-	err := u.db.QueryRow(selectUserByEmailSQL, id).Scan(&result.ID, &result.Email, &result.IsAdmin, &result.Nickname, &result.Balance, &result.ImageURL)
+	err := u.db.QueryRow(ctx, selectUserByEmailSQL, id).Scan(&result.ID, &result.Email, &result.IsAdmin, &result.Nickname, &result.Balance, &result.ImageURL)
 	if err != nil {
 		return model.User{}, err
 	}

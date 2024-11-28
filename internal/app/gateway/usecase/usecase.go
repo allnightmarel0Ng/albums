@@ -62,7 +62,10 @@ func (g *gatewayUseCase) UserProfile(jwtToken string) api.Response {
 		}
 	}
 
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://profile:%s/users/%d", g.profilePort, claims.ID), nil)
+	ctx, cancel := utils.DeadlineContext(1)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://profile:%s/users/%d", g.profilePort, claims.ID), nil)
 	if err != nil {
 		return utils.InterserviceCommunicationError()
 	}
@@ -80,7 +83,10 @@ func (g *gatewayUseCase) UserProfile(jwtToken string) api.Response {
 }
 
 func (g *gatewayUseCase) ArtistProfile(id int) api.Response {
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://profile:%s/artists/%d", g.profilePort, id), nil)
+	ctx, cancel := utils.DeadlineContext(2)
+	defer cancel()
+	
+	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://profile:%s/artists/%d", g.profilePort, id), nil)
 	if err != nil {
 		return utils.InterserviceCommunicationError()
 	}
@@ -126,7 +132,10 @@ func (g *gatewayUseCase) MainPage(jwtToken string) api.Response {
 }
 
 func (g *gatewayUseCase) nonAdminMainPage() api.Response {
-	albums, err := g.repo.GetAllAlbums()
+	ctx, cancel := utils.DeadlineContext(2)
+	defer cancel()
+
+	albums, err := g.repo.GetAllAlbums(ctx)
 	if err != nil {
 		return &api.AlbumsResponse{
 			Code:  http.StatusInternalServerError,

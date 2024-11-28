@@ -9,8 +9,8 @@ import (
 )
 
 type Database interface {
-	Query(sql string, args ...interface{}) (Rows, error)
-	QueryRow(sql string, args ...interface{}) Row
+	Query(ctx context.Context, sql string, args ...interface{}) (Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...interface{}) Row
 
 	Close()
 
@@ -21,7 +21,6 @@ type Database interface {
 
 type db struct {
 	pool *pgxpool.Pool
-	ctx  context.Context
 	// tx   pgx.Tx
 }
 
@@ -33,15 +32,14 @@ func NewDatabase(ctx context.Context, connectionString string) (Database, error)
 
 	return &db{
 		pool: pool,
-		ctx:  ctx,
 	}, nil
 }
 
-func (db *db) Query(sql string, args ...interface{}) (Rows, error) {
+func (db *db) Query(ctx context.Context, sql string, args ...interface{}) (Rows, error) {
 	var rows pgx.Rows
 	var err error
 
-	rows, err = db.pool.Query(db.ctx, sql, args...)
+	rows, err = db.pool.Query(ctx, sql, args...)
 	// switch {
 	// case db.tx == nil:
 	// case db.tx != nil:
@@ -55,17 +53,8 @@ func (db *db) Query(sql string, args ...interface{}) (Rows, error) {
 	return NewRows(rows), nil
 }
 
-func (db *db) QueryRow(sql string, args ...interface{}) Row {
-	var row pgx.Row
-
-	row = db.pool.QueryRow(db.ctx, sql, args...)
-	// switch {
-	// case db.tx == nil:
-	// case db.tx != nil:
-	// 	row = db.pool.QueryRow(db.ctx, sql, args...)
-	// }
-
-	return NewRow(row)
+func (db *db) QueryRow(ctx context.Context, sql string, args ...interface{}) Row {
+	return NewRow(db.pool.QueryRow(ctx, sql, args...))
 }
 
 func (db *db) Close() {

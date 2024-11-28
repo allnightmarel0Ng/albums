@@ -6,6 +6,7 @@ import (
 
 	"github.com/allnightmarel0Ng/albums/internal/app/profile/repository"
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
+	"github.com/allnightmarel0Ng/albums/internal/utils"
 )
 
 type ProfileUseCase interface {
@@ -24,7 +25,10 @@ func NewProfileUseCase(repo repository.ProfileRepository) ProfileUseCase {
 }
 
 func (p *profileUseCase) GetUserProfile(id int) api.Response {
-	user, err := p.repo.GetUserProfile(id)
+	ctx, cancel := utils.DeadlineContext(2)
+	defer cancel()
+	
+	user, err := p.repo.GetUserProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())
 		return &api.UserProfileResponse{
@@ -40,7 +44,10 @@ func (p *profileUseCase) GetUserProfile(id int) api.Response {
 }
 
 func (p *profileUseCase) GetArtistProfile(id int) api.Response {
-	albums, err := p.repo.GetArtistProfile(id)
+	ctx, cancel := utils.DeadlineContext(2)
+	defer cancel()
+	
+	albums, err := p.repo.GetArtistProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())
 		return &api.ArtistProfileResponse{
@@ -50,7 +57,7 @@ func (p *profileUseCase) GetArtistProfile(id int) api.Response {
 	}
 
 	return &api.ArtistProfileResponse{
-		Code:     http.StatusOK,
-		Albums:   albums,
+		Code:   http.StatusOK,
+		Albums: albums,
 	}
 }

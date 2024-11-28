@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/authorization/repository"
+	"github.com/allnightmarel0Ng/albums/internal/utils"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -39,7 +40,10 @@ func (a *authorizationUseCase) Authorize(b64 string) (string, int, error) {
 		return "", http.StatusBadRequest, errors.New("wrong authorization format")
 	}
 
-	id, hash, isAdmin, err := a.repo.GetIDPasswordHash(credentials[0])
+	ctx, cancel := utils.DeadlineContext(2)
+	defer cancel()
+
+	id, hash, isAdmin, err := a.repo.GetIDPasswordHash(ctx, credentials[0])
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(credentials[1])) != nil {
 		return "", http.StatusUnauthorized, errors.New("email or password mismatch")
 	}

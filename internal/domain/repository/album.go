@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"strings"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
@@ -65,9 +66,9 @@ const (
 )
 
 type AlbumRepository interface {
-	GetUsersPurchasedAlbums(userID int) ([]model.Album, error)
-	GetAllAlbumsLike(name string) ([]model.Album, error)
-	GetArtistsAlbums(artistID int) ([]model.Album, error)
+	GetUsersPurchasedAlbums(ctx context.Context, userID int) ([]model.Album, error)
+	GetAllAlbumsLike(ctx context.Context, name string) ([]model.Album, error)
+	GetArtistsAlbums(ctx context.Context, artistID int) ([]model.Album, error)
 }
 
 type albumRepository struct {
@@ -115,8 +116,8 @@ func albumsFromRows(rows postgres.Rows) ([]model.Album, error) {
 	return result, nil
 }
 
-func (a *albumRepository) GetUsersPurchasedAlbums(userID int) ([]model.Album, error) {
-	rows, err := a.db.Query(selectUsersPurchasedAlbumsSQL, userID)
+func (a *albumRepository) GetUsersPurchasedAlbums(ctx context.Context, userID int) ([]model.Album, error) {
+	rows, err := a.db.Query(ctx, selectUsersPurchasedAlbumsSQL, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +126,7 @@ func (a *albumRepository) GetUsersPurchasedAlbums(userID int) ([]model.Album, er
 	return albumsFromRows(rows)
 }
 
-func (a *albumRepository) GetAllAlbumsLike(name string) ([]model.Album, error) {
+func (a *albumRepository) GetAllAlbumsLike(ctx context.Context, name string) ([]model.Album, error) {
 	tokens := strings.Split(name, " ")
 	var sb strings.Builder
 
@@ -138,7 +139,7 @@ func (a *albumRepository) GetAllAlbumsLike(name string) ([]model.Album, error) {
 		sb.WriteRune('%')
 	}
 
-	rows, err := a.db.Query(selectAlbumsLikeNameSQL, sb.String())
+	rows, err := a.db.Query(ctx, selectAlbumsLikeNameSQL, sb.String())
 	if err != nil {
 		return nil, err
 	}
@@ -147,8 +148,8 @@ func (a *albumRepository) GetAllAlbumsLike(name string) ([]model.Album, error) {
 	return albumsFromRows(rows)
 }
 
-func (a *albumRepository) GetArtistsAlbums(artistID int) ([]model.Album, error) {
-	rows, err := a.db.Query(selectArtistsAlbumsSQL, artistID)
+func (a *albumRepository) GetArtistsAlbums(ctx context.Context, artistID int) ([]model.Album, error) {
+	rows, err := a.db.Query(ctx, selectArtistsAlbumsSQL, artistID)
 	if err != nil {
 		return nil, err
 	}

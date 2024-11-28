@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,7 +17,7 @@ func Send(c *gin.Context, response api.Response) {
 	k, v := response.GetKeyValue()
 	c.JSON(response.GetCode(), gin.H{
 		"code": response.GetCode(),
-		k: v,
+		k:      v,
 	})
 }
 
@@ -77,4 +78,8 @@ func InterserviceCommunicationError() api.Response {
 		Code:  http.StatusInternalServerError,
 		Error: "interservice communication error",
 	}
+}
+
+func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
+	return context.WithDeadline(context.Background(), time.Now().Add(2 * time.Second))
 }
