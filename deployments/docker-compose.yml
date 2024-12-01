@@ -77,6 +77,20 @@ services:
       postgres: 
         condition: service_healthy
     init: true
+  
+  order-management:
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: order-management
+        SERVICE_PORT: ${ORDER_MANAGEMENT_PORT}
+    ports:
+      - "${ORDER_MANAGEMENT_PORT}:${ORDER_MANAGEMENT_PORT}"
+    depends_on:
+      postgres: 
+        condition: service_healthy
+    init: true
 
   gateway:
     build:

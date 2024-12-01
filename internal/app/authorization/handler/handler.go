@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -28,7 +29,7 @@ func NewAuthorizationHandler(useCase usecase.AuthorizationUseCase) Authorization
 
 func (a *authorizationHandler) HandleAuthentication(c *gin.Context) {
 	authData := c.GetHeader("Authorization")
-
+	log.Print(authData)
 	if authData == "" || !strings.HasPrefix(authData, "Basic ") {
 		utils.Send(c, &api.AuthorizationResponse{
 			Code:  http.StatusBadRequest,

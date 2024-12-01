@@ -11,7 +11,7 @@ run:
 	@${PREFIX} up -d
 
 down:
-	@${PREFIX} down
+	@${PREFIX} down --volumes 
 
 logs:
 	@${PREFIX} logs ${AT}

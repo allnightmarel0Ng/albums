@@ -1,98 +1,82 @@
-CREATE OR REPLACE FUNCTION add_album_to_user_order(user_id INT, album_id INT)
-RETURNS VOID AS $$
+CREATE OR REPLACE PROCEDURE add_album_to_user_order(p_user_id INT, p_album_id INT)
+AS $$
 DECLARE
-    order_id INT;
-    order_item_id INT;
-    album_price DECIMAL(10, 2);
+    d_order_id INT;
+    d_order_item_id INT;
+    d_album_price DECIMAL(10, 2);
 BEGIN
-    BEGIN
-        SELECT price INTO album_price 
-        FROM public.albums 
-        WHERE id = album_id;
+    SELECT price INTO d_album_price 
+    FROM public.albums 
+    WHERE id = p_album_id;
 
-        IF album_price IS NULL THEN
-            RAISE EXCEPTION 'Album with ID % does not exist.', album_id;
-        END IF;
+    IF d_album_price IS NULL THEN
+        ROLLBACK;
+    END IF;
 
-        SELECT id INTO order_id 
-        FROM public.orders 
-        WHERE user_id = user_id AND is_paid = FALSE;
+    SELECT o.id INTO d_order_id
+    FROM public.orders AS o
+    WHERE o.user_id = p_user_id AND o.is_paid = FALSE;
 
-        IF order_id IS NULL THEN
-            INSERT INTO public.orders (user_id) 
-            VALUES (user_id)
-            RETURNING id INTO order_id;
-        END IF;
+    IF d_order_id IS NULL THEN
+        INSERT INTO public.orders (user_id) 
+        VALUES (p_user_id)
+        RETURNING id INTO d_order_id;
+    END IF;
 
-        SELECT id INTO order_item_id 
-        FROM public.order_items 
-        WHERE order_id = order_id AND album_id = album_id;
-        
-        IF order_item_id IS NOT NULL THEN
-            RAISE EXCEPTION 'Album with ID % already in order.', album_id;
-        END IF;
+    SELECT id INTO d_order_item_id 
+    FROM public.order_items 
+    WHERE order_id = d_order_id AND album_id = p_album_id;
+    
+    IF d_order_item_id IS NOT NULL THEN
+        ROLLBACK;
+    END IF;
 
-        INSERT INTO public.order_items (order_id, album_id)
-        VALUES (order_id, album_id);
+    INSERT INTO public.order_items (order_id, album_id)
+    VALUES (d_order_id, p_album_id);
 
-        UPDATE public.orders 
-        SET total_price = total_price + album_price 
-        WHERE id = order_id;
-
-        COMMIT;
-    EXCEPTION
-        WHEN OTHERS THEN
-            ROLLBACK;
-            RAISE;
-    END;
+    UPDATE public.orders 
+    SET total_price = total_price + d_album_price 
+    WHERE id = d_order_id;
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION delete_album_from_user_order(user_id INT, album_id INT)
-RETURNS VOID AS $$
+CREATE OR REPLACE PROCEDURE delete_album_from_user_order(p_user_id INT, p_album_id INT)
+AS $$
 DECLARE
-    order_id INT;
-    order_item_id INT;
-    album_price DECIMAL(10, 2);
+    d_order_id INT;
+    d_order_item_id INT;
+    d_album_price DECIMAL(10, 2);
 BEGIN
-    BEGIN
-        SELECT price INTO album_price 
-        FROM public.albums 
-        WHERE id = album_id;
+    SELECT price INTO d_album_price 
+    FROM public.albums 
+    WHERE id = p_album_id;
 
-        IF album_price IS NULL THEN
-            RAISE EXCEPTION 'Album with ID % does not exist.', album_id;
-        END IF;
+    IF d_album_price IS NULL THEN
+        ROLLBACK;
+    END IF;
 
-        SELECT id INTO order_id 
-        FROM public.orders 
-        WHERE user_id = user_id AND is_paid = FALSE;
+    SELECT id INTO d_order_id 
+    FROM public.orders 
+    WHERE user_id = p_user_id AND is_paid = FALSE;
 
-        IF order_id IS NULL THEN
-            RAISE EXCEPTION 'No order found to delete from.';
-        END IF;
+    IF d_order_id IS NULL THEN
+        ROLLBACK;
+    END IF;
 
-        SELECT id INTO order_item_id
-        FROM public.order_items
-        WHERE order_id = order_id;
+    SELECT id INTO d_order_item_id
+    FROM public.order_items
+    WHERE order_id = d_order_id;
 
-        IF order_item_id IS NULL THEN
-            RAISE EXCEPTION 'Order item with % does not exist', album_id;
-        END IF;
+    IF d_order_item_id IS NULL THEN
+        ROLLBACK;
+    END IF;
 
-        DELETE 
-        FROM public.order_items
-        WHERE id = order_item_id;
+    DELETE 
+    FROM public.order_items
+    WHERE id = d_order_item_id;
 
-        UPDATE public.orders
-        SET total_price = total_price - album_price
-        WHERE id = order_id;
-
-        COMMIT;
-    EXCEPTION
-        WHEN OTHERS THEN
-            ROLLBACK;
-            RAISE;
-    END;
+    UPDATE public.orders
+    SET total_price = total_price - d_album_price
+    WHERE id = d_order_id;
 END;
 $$ LANGUAGE PLPGSQL;

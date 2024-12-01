@@ -25,9 +25,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to establish db connection: %s", err.Error())
 	}
+	defer db.Close()
 
 	repo := repository.NewGatewayRepository(domainRepository.NewAlbumRepository(db))
-	useCase := usecase.NewGatewayUseCase(repo, conf.AuthorizationPort, conf.ProfilePort, conf.JwtSecretKey)
+	useCase := usecase.NewGatewayUseCase(repo, conf.AuthorizationPort, conf.ProfilePort, conf.OrderManagementPort, conf.JwtSecretKey)
 	handler := handler.NewGatewayHandler(useCase)
 
 	router := gin.Default()
@@ -35,6 +36,9 @@ func main() {
 	// router.GET("/", handler.HandleMainPage)
 	router.GET("/artists/:id", handler.HandleArtistProfile)
 	router.GET("/profile", handler.HandleUserProfile)
+	router.POST("/add/:id", handler.HandleOrderAdd)
+	router.POST("/remove/:id", handler.HandleOrderRemove)
+	router.GET("/orders", handler.HandleOrders)
 
 	log.Fatal(http.ListenAndServe(":"+conf.GatewayPort, router))
 }

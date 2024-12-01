@@ -7,15 +7,16 @@ import (
 )
 
 type Config struct {
-	PostgresDb        string
-	PostgresPort      string
-	PostgresUser      string
-	PostgresPassword  string
-	RedisPort         string
-	JwtSecretKey      string
-	AuthorizationPort string
-	ProfilePort       string
-	GatewayPort       string
+	PostgresDb          string
+	PostgresPort        string
+	PostgresUser        string
+	PostgresPassword    string
+	RedisPort           string
+	JwtSecretKey        string
+	AuthorizationPort   string
+	ProfilePort         string
+	OrderManagementPort string
+	GatewayPort         string
 }
 
 func LoadConfig() (*Config, error) {
@@ -25,14 +26,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &Config{
-		PostgresDb:        os.Getenv("POSTGRES_DB"),
-		PostgresPort:      os.Getenv("POSTGRES_PORT"),
-		PostgresUser:      os.Getenv("POSTGRES_USER"),
-		PostgresPassword:  os.Getenv("POSTGRES_PASSWORD"),
-		RedisPort:         os.Getenv("REDIS_PORT"),
-		JwtSecretKey:      os.Getenv("JWT_SECRET_KEY"),
-		AuthorizationPort: os.Getenv("AUTHORIZATION_PORT"),
-		ProfilePort:       os.Getenv("PROFILE_PORT"),
-		GatewayPort:       os.Getenv("GATEWAY_PORT"),
+		PostgresDb:          os.Getenv("POSTGRES_DB"),
+		PostgresPort:        os.Getenv("POSTGRES_PORT"),
+		PostgresUser:        os.Getenv("POSTGRES_USER"),
+		PostgresPassword:    os.Getenv("POSTGRES_PASSWORD"),
+		RedisPort:           os.Getenv("REDIS_PORT"),
+		JwtSecretKey:        os.Getenv("JWT_SECRET_KEY"),
+		AuthorizationPort:   os.Getenv("AUTHORIZATION_PORT"),
+		ProfilePort:         os.Getenv("PROFILE_PORT"),
+		OrderManagementPort: os.Getenv("ORDER_MANAGEMENT_PORT"),
+		GatewayPort:         os.Getenv("GATEWAY_PORT"),
 	}, nil
 }

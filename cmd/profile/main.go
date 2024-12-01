@@ -25,6 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to connect to database: %s", err.Error())
 	}
+	defer db.Close()
 
 	repo := repository.NewProfileRepository(
 		domainRepository.NewUserRepository(db),

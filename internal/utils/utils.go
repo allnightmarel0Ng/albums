@@ -3,9 +3,12 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
@@ -23,6 +26,18 @@ func Send(c *gin.Context, response api.Response) {
 	}
 
 	c.Data(response.GetCode(), "application/json", encodedResponse)
+}
+
+func Request(ctx context.Context, method, url, auth string, body io.Reader) (*http.Response, error) {
+	request, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", auth)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	return response, err
 }
 
 func SafelyCastJWTClaim[T any](data jwt.MapClaims, fieldName string) (T, error) {
@@ -92,4 +107,14 @@ func InterserviceCommunicationError() api.Response {
 
 func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
 	return context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+}
+
+func GetIDParam(c *gin.Context) (int, error) {
+	idStr, ok := c.Params.Get("id")
+	if !ok {
+		return 0, errors.New("id param not found")
+	}
+
+	id, err := strconv.Atoi(idStr)
+	return id, err
 }

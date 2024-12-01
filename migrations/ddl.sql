@@ -49,7 +49,7 @@ CREATE TABLE public.purchased_albums (
 CREATE TABLE public.orders (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES public.users(id) ON DELETE SET NULL,
-    date DATE NOT NULL DEFAULT NOW(),
+    date TIMESTAMP NOT NULL DEFAULT NOW(),
     total_price DECIMAL(10, 2) NOT NULL DEFAULT 0,
     is_paid BOOLEAN NOT NULL DEFAULT FALSE
 );

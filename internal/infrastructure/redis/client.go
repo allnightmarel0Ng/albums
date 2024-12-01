@@ -40,7 +40,7 @@ func (c *client) Set(ctx context.Context, key string, value interface{}, exp tim
 	if err != nil {
 		return ErrRedis
 	}
-	
+
 	err = c.cl.Set(ctx, key, value, exp).Err()
 	if err != nil {
 		return ErrRedis
@@ -53,7 +53,7 @@ func (c *client) Get(ctx context.Context, key string) (string, error) {
 	if err != nil {
 		return "", ErrRedis
 	}
-	
+
 	res, err := c.cl.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -71,7 +71,7 @@ func (c *client) Del(ctx context.Context, keys ...string) error {
 	if err != nil {
 		return ErrRedis
 	}
-	
+
 	err = c.cl.Del(ctx, keys...).Err()
 	if err != nil {
 		if err == redis.Nil {

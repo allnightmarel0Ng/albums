@@ -48,7 +48,7 @@ func (a *authorizationRepository) AddJWT(ctx context.Context, jwt string, expira
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		log.Println(time.Duration(expirationSeconds)*time.Second)
+		log.Println(time.Duration(expirationSeconds) * time.Second)
 		err := a.redis.Set(ctx, jwt, "", time.Duration(expirationSeconds)*time.Second)
 		if err != nil {
 			return ErrUnexpected
