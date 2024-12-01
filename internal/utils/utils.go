@@ -2,7 +2,7 @@ package utils
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -14,11 +14,15 @@ import (
 )
 
 func Send(c *gin.Context, response api.Response) {
-	k, v := response.GetKeyValue()
-	c.JSON(response.GetCode(), gin.H{
-		"code": response.GetCode(),
-		k:      v,
-	})
+	encodedResponse, err := json.Marshal(response)
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error": "Internal server error",
+		})
+		return
+	}
+
+	c.Data(response.GetCode(), "application/json", encodedResponse)
 }
 
 func SafelyCastJWTClaim[T any](data jwt.MapClaims, fieldName string) (T, error) {
@@ -37,40 +41,46 @@ func SafelyCastJWTClaim[T any](data jwt.MapClaims, fieldName string) (T, error) 
 	return result, nil
 }
 
-func GetJWTClaims(jwtToken string, secretKey string) (api.JWTClaims, error) {
+func GetJWTClaims(jsonWebToken string, secretKey string) api.Response {
 	data := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(jwtToken, data, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(jsonWebToken, data, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secretKey), nil
 	})
 
 	if err != nil {
-		return api.JWTClaims{}, err
+		return &api.AuthorizationResponse{
+			Code:  http.StatusInternalServerError,
+			Error: err.Error(),
+		}
 	}
 
 	if !token.Valid {
-		return api.JWTClaims{}, errors.New("invalid token")
+		return &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "invalid token",
+		}
 	}
 
-	var result api.JWTClaims
+	var result api.AuthorizationResponse
 	idFloat, err := SafelyCastJWTClaim[float64](data, "id")
 	if err != nil {
-		return result, err
+		return &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		}
 	}
 	result.ID = int(idFloat)
 
-	expFloat, err := SafelyCastJWTClaim[float64](data, "exp")
-	if err != nil {
-		return result, err
-	}
-	result.Exp = int64(expFloat)
-
-	if time.Now().After(time.Unix(result.Exp, 0)) {
-		return result, errors.New("authorization token has expired")
-	}
-
 	result.IsAdmin, err = SafelyCastJWTClaim[bool](data, "isAdmin")
+	if err != nil {
+		return &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: err.Error(),
+		}
+	}
 
-	return result, err
+	result.Code = http.StatusOK
+	return &result
 }
 
 func InterserviceCommunicationError() api.Response {
@@ -81,5 +91,5 @@ func InterserviceCommunicationError() api.Response {
 }
 
 func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
-	return context.WithDeadline(context.Background(), time.Now().Add(2 * time.Second))
+	return context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
 }

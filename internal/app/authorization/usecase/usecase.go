@@ -1,20 +1,22 @@
 package usecase
 
 import (
+	"context"
 	"encoding/base64"
-	"errors"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/authorization/repository"
+	"github.com/allnightmarel0Ng/albums/internal/domain/api"
 	"github.com/allnightmarel0Ng/albums/internal/utils"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthorizationUseCase interface {
-	Authorize(b64 string) (string, int, error)
+	Authenticate(b64 string) api.Response
+	Authorize(jsonWebToken string) api.Response
+	Logout(jsonWebToken string) api.Response
 }
 
 type authorizationUseCase struct {
@@ -29,33 +31,107 @@ func NewAuthorizationUseCase(repo repository.AuthorizationRepository, jwtSecretK
 	}
 }
 
-func (a *authorizationUseCase) Authorize(b64 string) (string, int, error) {
+func (a *authorizationUseCase) Authenticate(b64 string) api.Response {
 	rawCredentials, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		return "", http.StatusBadRequest, errors.New("error parsing base64")
+		return &api.AuthenticationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "error parsing base64",
+		}
 	}
 
 	credentials := strings.Split(string(rawCredentials), ":")
 	if len(credentials) != 2 {
-		return "", http.StatusBadRequest, errors.New("wrong authorization format")
+		return &api.AuthenticationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong authorization format",
+		}
 	}
 
-	ctx, cancel := utils.DeadlineContext(2)
+	ctx, cancel := utils.DeadlineContext(5)
 	defer cancel()
 
 	id, hash, isAdmin, err := a.repo.GetIDPasswordHash(ctx, credentials[0])
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(credentials[1])) != nil {
-		return "", http.StatusUnauthorized, errors.New("email or password mismatch")
+		return &api.AuthenticationResponse{
+			Code:  http.StatusUnauthorized,
+			Error: "email or password mismatch",
+		}
 	}
 
 	result, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":      id,
 		"isAdmin": isAdmin,
-		"exp":     time.Now().Add(time.Hour).Unix(),
 	}).SignedString(a.jwtSecretKey)
 	if err != nil {
-		return "", http.StatusInternalServerError, errors.New("unable to create jwt key")
+		return &api.AuthenticationResponse{
+			Code:  http.StatusUnauthorized,
+			Error: "unable to create jwt key",
+		}
 	}
 
-	return result, http.StatusOK, nil
+	ctx, cancel = utils.DeadlineContext(5)
+	defer cancel()
+	err = a.repo.AddJWT(ctx, result, 3600)
+	if err != nil {
+		return &api.AuthenticationResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "unable to create jwt key",
+		}
+	}
+
+	return &api.AuthenticationResponse{
+		Code: http.StatusOK,
+		Jwt:  result,
+	}
+}
+
+func (a *authorizationUseCase) Authorize(jsonWebToken string) api.Response {
+	ctx, cancel := utils.DeadlineContext(5)
+	defer cancel()
+
+	err := a.repo.FindJWT(ctx, jsonWebToken)
+	if err != nil {
+		switch err {
+		case context.DeadlineExceeded:
+		case repository.ErrUnexpected:
+			return &api.AuthorizationResponse{
+				Code:  http.StatusInternalServerError,
+				Error: "jwt storage error",
+			}
+		default:
+			return &api.AuthorizationResponse{
+				Code:  http.StatusUnauthorized,
+				Error: err.Error(),
+			}
+		}
+	}
+
+	return utils.GetJWTClaims(jsonWebToken, string(a.jwtSecretKey))
+}
+
+func (a *authorizationUseCase) Logout(jsonWebToken string) api.Response {
+	ctx, cancel := utils.DeadlineContext(5)
+	defer cancel()
+
+	err := a.repo.DelJWT(ctx, jsonWebToken)
+	if err != nil {
+		switch err {
+		case context.DeadlineExceeded:
+		case repository.ErrUnexpected:
+			return &api.ErrorResponse{
+				Code:  http.StatusInternalServerError,
+				Error: "jwt storage error",
+			}
+		default:
+			return &api.ErrorResponse{
+				Code:  http.StatusUnauthorized,
+				Error: err.Error(),
+			}
+		}
+	}
+
+	return &api.ErrorResponse{
+		Code: http.StatusOK,
+	}
 }

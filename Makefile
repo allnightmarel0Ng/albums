@@ -15,3 +15,6 @@ down:
 
 logs:
 	@${PREFIX} logs ${AT}
+
+ps:
+	@${PREFIX} ps -a

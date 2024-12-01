@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -11,9 +12,9 @@ import (
 )
 
 type GatewayUseCase interface {
-	Authorization(authHeader string) api.Response
-	MainPage(authHeader string) api.Response
-	UserProfile(jwtToken string) api.Response
+	Authentication(authHeader string) api.Response
+	// MainPage(authHeader string) api.Response
+	UserProfile(jsonWebToken string) api.Response
 	ArtistProfile(id int) api.Response
 }
 
@@ -33,12 +34,14 @@ func NewGatewayUseCase(repo repository.GatewayRepository, authorizationPort, pro
 	}
 }
 
-func (g *gatewayUseCase) Authorization(authHeader string) api.Response {
-	request, err := http.NewRequest("GET", fmt.Sprintf("http://authorization:%s/", g.authorizationPort), nil)
+func (g *gatewayUseCase) Authentication(authHeader string) api.Response {
+	ctx, cancel := utils.DeadlineContext(10)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://authorization:%s/authenticate", g.authorizationPort), nil)
 	if err != nil {
 		return utils.InterserviceCommunicationError()
 	}
-
 	request.Header.Set("Authorization", authHeader)
 
 	client := &http.Client{}
@@ -48,21 +51,25 @@ func (g *gatewayUseCase) Authorization(authHeader string) api.Response {
 	}
 	defer response.Body.Close()
 
-	var result api.AuthorizationResponse
+	var result api.AuthenticationResponse
 	json.NewDecoder(response.Body).Decode(&result)
 	return &result
 }
 
-func (g *gatewayUseCase) UserProfile(jwtToken string) api.Response {
-	claims, err := utils.GetJWTClaims(jwtToken, g.jwtSecretKey)
+func (g *gatewayUseCase) UserProfile(jsonWebToken string) api.Response {
+	code, claims, err := g.authorize(jsonWebToken)
 	if err != nil {
-		return &api.AlbumsResponse{
-			Code:  http.StatusUnauthorized,
-			Error: err.Error(),
+		return utils.InterserviceCommunicationError()
+	}
+
+	if code != http.StatusOK {
+		return &api.ErrorResponse{
+			Code:  code,
+			Error: claims.Error,
 		}
 	}
 
-	ctx, cancel := utils.DeadlineContext(1)
+	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
 	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://profile:%s/users/%d", g.profilePort, claims.ID), nil)
@@ -83,9 +90,9 @@ func (g *gatewayUseCase) UserProfile(jwtToken string) api.Response {
 }
 
 func (g *gatewayUseCase) ArtistProfile(id int) api.Response {
-	ctx, cancel := utils.DeadlineContext(2)
+	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
-	
+
 	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://profile:%s/artists/%d", g.profilePort, id), nil)
 	if err != nil {
 		return utils.InterserviceCommunicationError()
@@ -103,55 +110,77 @@ func (g *gatewayUseCase) ArtistProfile(id int) api.Response {
 	return &result
 }
 
-func (g *gatewayUseCase) MainPage(jwtToken string) api.Response {
-	claims, err := utils.GetJWTClaims(jwtToken, g.jwtSecretKey)
-	if err != nil {
-		return &api.AlbumsResponse{
-			Code:  http.StatusUnauthorized,
-			Error: err.Error(),
-		}
-	}
+// func (g *gatewayUseCase) MainPage(jwtToken string) api.Response {
+// 	claims, err := utils.GetJWTClaims(jwtToken, g.jwtSecretKey)
+// 	if err != nil {
+// 		return &api.AlbumsResponse{
+// 			Code:  http.StatusUnauthorized,
+// 			Error: err.Error(),
+// 		}
+// 	}
 
-	// userID, err := utils.SafelyCastJWTClaim[float64](data, "id")
-	// if err != nil {
-	// 	return &api.AlbumsResponse{
-	// 		Code:  http.StatusUnprocessableEntity,
-	// 		Error: err.Error(),
-	// 	}
-	// }
+// 	// userID, err := utils.SafelyCastJWTClaim[float64](data, "id")
+// 	// if err != nil {
+// 	// 	return &api.AlbumsResponse{
+// 	// 		Code:  http.StatusUnprocessableEntity,
+// 	// 		Error: err.Error(),
+// 	// 	}
+// 	// }
 
-	switch claims.IsAdmin {
-	case false:
-		return g.nonAdminMainPage()
-	default:
-		return &api.AlbumsResponse{
-			Code:  http.StatusNotImplemented,
-			Error: "not yet implemented",
-		}
-	}
-}
+// 	switch claims.IsAdmin {
+// 	case false:
+// 		return g.nonAdminMainPage()
+// 	default:
+// 		return &api.AlbumsResponse{
+// 			Code:  http.StatusNotImplemented,
+// 			Error: "not yet implemented",
+// 		}
+// 	}
+// }
 
-func (g *gatewayUseCase) nonAdminMainPage() api.Response {
-	ctx, cancel := utils.DeadlineContext(2)
+// func (g *gatewayUseCase) nonAdminMainPage() api.Response {
+// 	ctx, cancel := utils.DeadlineContext(2)
+// 	defer cancel()
+
+// 	albums, err := g.repo.GetAllAlbums(ctx)
+// 	if err != nil {
+// 		return &api.AlbumsResponse{
+// 			Code:  http.StatusInternalServerError,
+// 			Error: "retrieving from db error",
+// 		}
+// 	}
+
+// 	if albums == nil {
+// 		return &api.AlbumsResponse{
+// 			Code:  http.StatusNotFound,
+// 			Error: "no albums found",
+// 		}
+// 	}
+
+// 	return &api.AlbumsResponse{
+// 		Code: http.StatusOK,
+// 		Data: albums,
+// 	}
+// }
+
+func (g *gatewayUseCase) authorize(jsonWebToken string) (int, api.AuthorizationResponse, error) {
+	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
-	albums, err := g.repo.GetAllAlbums(ctx)
+	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://authorization:%s/authorize", g.authorizationPort), nil)
 	if err != nil {
-		return &api.AlbumsResponse{
-			Code:  http.StatusInternalServerError,
-			Error: "retrieving from db error",
-		}
+		return http.StatusInternalServerError, api.AuthorizationResponse{}, errors.New("interservice communication error")
 	}
+	request.Header.Set("Authorization", "Bearer "+jsonWebToken)
 
-	if albums == nil {
-		return &api.AlbumsResponse{
-			Code:  http.StatusNotFound,
-			Error: "no albums found",
-		}
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return http.StatusInternalServerError, api.AuthorizationResponse{}, errors.New("interservice communication error")
 	}
+	defer response.Body.Close()
 
-	return &api.AlbumsResponse{
-		Code: http.StatusOK,
-		Data: albums,
-	}
+	var result api.AuthorizationResponse
+	json.NewDecoder(response.Body).Decode(&result)
+	return response.StatusCode, result, nil
 }

@@ -13,7 +13,7 @@ import (
 
 type GatewayHandler interface {
 	HandleLogin(c *gin.Context)
-	HandleMainPage(c *gin.Context)
+	// HandleMainPage(c *gin.Context)
 	HandleUserProfile(c *gin.Context)
 	HandleArtistProfile(c *gin.Context)
 }
@@ -29,21 +29,21 @@ func NewGatewayHandler(useCase usecase.GatewayUseCase) GatewayHandler {
 }
 
 func (g *gatewayHandler) HandleLogin(c *gin.Context) {
-	utils.Send(c, g.useCase.Authorization(c.GetHeader("Authorization")))
+	utils.Send(c, g.useCase.Authentication(c.GetHeader("Authorization")))
 }
 
-func (g *gatewayHandler) HandleMainPage(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
+// func (g *gatewayHandler) HandleMainPage(c *gin.Context) {
+// 	authHeader := c.GetHeader("Authorization")
 
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-	}
+// 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+// 		utils.Send(c, &api.AuthorizationResponse{
+// 			Code:  http.StatusBadRequest,
+// 			Error: "wrong auth token",
+// 		})
+// 	}
 
-	utils.Send(c, g.useCase.MainPage(authHeader[len("Bearer "):]))
-}
+// 	utils.Send(c, g.useCase.MainPage(authHeader[len("Bearer "):]))
+// }
 
 func (g *gatewayHandler) HandleUserProfile(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")

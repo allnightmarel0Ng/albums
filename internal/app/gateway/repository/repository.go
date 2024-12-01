@@ -22,5 +22,10 @@ func NewGatewayRepository(albums repository.AlbumRepository) GatewayRepository {
 }
 
 func (g *gatewayRepository) GetAllAlbums(ctx context.Context) ([]model.Album, error) {
-	return g.albums.GetAllAlbumsLike(ctx, "")
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		return g.albums.GetAllAlbumsLike(ctx, "")
+	}
 }

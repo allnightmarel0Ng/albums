@@ -27,7 +27,7 @@ func NewProfileUseCase(repo repository.ProfileRepository) ProfileUseCase {
 func (p *profileUseCase) GetUserProfile(id int) api.Response {
 	ctx, cancel := utils.DeadlineContext(2)
 	defer cancel()
-	
+
 	user, err := p.repo.GetUserProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())
@@ -46,7 +46,7 @@ func (p *profileUseCase) GetUserProfile(id int) api.Response {
 func (p *profileUseCase) GetArtistProfile(id int) api.Response {
 	ctx, cancel := utils.DeadlineContext(2)
 	defer cancel()
-	
+
 	albums, err := p.repo.GetArtistProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())

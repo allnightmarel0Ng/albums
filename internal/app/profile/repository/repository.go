@@ -25,19 +25,29 @@ func NewProfileRepository(users repository.UserRepository, albums repository.Alb
 }
 
 func (p *profileRepository) GetUserProfile(ctx context.Context, id int) (model.User, error) {
-	user, err := p.users.GetUser(ctx, id)
-	if err != nil {
-		return model.User{}, err
-	}
+	select {
+	case <-ctx.Done():
+		return model.User{}, ctx.Err()
+	default:
+		user, err := p.users.GetUser(ctx, id)
+		if err != nil {
+			return model.User{}, err
+		}
 
-	user.Purchased, err = p.albums.GetUsersPurchasedAlbums(ctx, id)
-	if err != nil {
-		return model.User{}, err
-	}
+		user.Purchased, err = p.albums.GetUsersPurchasedAlbums(ctx, id)
+		if err != nil {
+			return model.User{}, err
+		}
 
-	return user, nil
+		return user, nil
+	}
 }
 
 func (p *profileRepository) GetArtistProfile(ctx context.Context, id int) ([]model.Album, error) {
-	return p.albums.GetArtistsAlbums(ctx, id)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		return p.albums.GetArtistsAlbums(ctx, id)
+	}
 }

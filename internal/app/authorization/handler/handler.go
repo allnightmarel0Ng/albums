@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"log"
 	"net/http"
 	"strings"
 
@@ -12,7 +11,9 @@ import (
 )
 
 type AuthorizationHandler interface {
+	HandleAuthentication(c *gin.Context)
 	HandleAuthorization(c *gin.Context)
+	HandleLogout(c *gin.Context)
 }
 
 type authorizationHandler struct {
@@ -25,7 +26,7 @@ func NewAuthorizationHandler(useCase usecase.AuthorizationUseCase) Authorization
 	}
 }
 
-func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
+func (a *authorizationHandler) HandleAuthentication(c *gin.Context) {
 	authData := c.GetHeader("Authorization")
 
 	if authData == "" || !strings.HasPrefix(authData, "Basic ") {
@@ -36,18 +37,31 @@ func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
 		return
 	}
 
-	jwt, code, err := a.useCase.Authorize(authData[len("Basic "):])
-	if err != nil {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  code,
-			Error: err.Error(),
+	utils.Send(c, a.useCase.Authenticate(authData[len("Basic "):]))
+}
+
+func (a *authorizationHandler) HandleAuthorization(c *gin.Context) {
+	authData := c.GetHeader("Authorization")
+	if authData == "" || !strings.HasPrefix(authData, "Bearer ") {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "bad authorization base64 token",
 		})
 		return
 	}
 
-	log.Printf("jwt: %s", jwt)
-	utils.Send(c, &api.AuthorizationResponse{
-		Code: code,
-		Jwt:  jwt,
-	})
+	utils.Send(c, a.useCase.Authorize(authData[len("Bearer "):]))
+}
+
+func (a *authorizationHandler) HandleLogout(c *gin.Context) {
+	authData := c.GetHeader("Authorization")
+	if authData == "" || !strings.HasPrefix(authData, "Bearer ") {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "bad authorization base64 token",
+		})
+		return
+	}
+
+	utils.Send(c, a.useCase.Logout(authData[len("Bearer "):]))
 }

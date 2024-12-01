@@ -32,7 +32,7 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/login", handler.HandleLogin)
-	router.GET("/", handler.HandleMainPage)
+	// router.GET("/", handler.HandleMainPage)
 	router.GET("/artists/:id", handler.HandleArtistProfile)
 	router.GET("/profile", handler.HandleUserProfile)
 
