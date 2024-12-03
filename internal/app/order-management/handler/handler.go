@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/order-management/usecase"
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
@@ -66,7 +67,17 @@ func (o *orderManagementHandler) HandleOrders(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, o.useCase.UserOrder(id))
+	unpaidOnlyStr := c.DefaultQuery("unpaidOnly", "false")
+	unpaidOnly, err := strconv.ParseBool(unpaidOnlyStr)
+	if err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "invalid 'unPaidOnly' parameter",
+		})
+		return
+	}
+
+	utils.Send(c, o.useCase.UserOrder(id, unpaidOnly))
 }
 
 func parseRequestBody(c *gin.Context) (api.OrderActionRequest, error) {

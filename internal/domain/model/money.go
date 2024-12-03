@@ -8,5 +8,5 @@ type Order struct {
 	Date       time.Time `json:"date"`
 	TotalPrice float64   `json:"totalPrice"`
 	IsPaid     bool      `json:"isPaid"`
-	Albums     []Album   `json:"albums"`
+	Albums     []Album   `json:"albums,omitempty"`
 }

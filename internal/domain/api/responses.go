@@ -86,3 +86,13 @@ type UserOrdersResponse struct {
 func (u *UserOrdersResponse) GetCode() int {
 	return u.Code
 }
+
+type UnpaidUserOrderResponse struct {
+	Code  int         `json:"-"`
+	Error string      `json:"error,omitempty"`
+	Order model.Order `json:"order,omitempty"`
+}
+
+func (u *UnpaidUserOrderResponse) GetCode() int {
+	return u.Code
+}

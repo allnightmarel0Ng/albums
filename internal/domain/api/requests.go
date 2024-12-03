@@ -8,6 +8,13 @@ type OrderActionRequest struct {
 type MoneyOperationKafkaMessage struct {
 	Type    string `json:"type"`
 	UserID  int    `json:"userID"`
-	Diff    int    `json:"diff,omitempty"`
-	AlbumID int    `json:"albumID,omitempty"`
+	Diff    uint    `json:"diff,omitempty"`
+	OrderID int    `json:"albumID,omitempty"`
+}
+
+type DepositRequest struct {
+	Money uint `json:"money"`
+}
+type BuyRequest struct {
+	OrderID int `json:"money"`
 }

@@ -8,19 +8,21 @@ import (
 
 type Producer struct {
 	producer *kafka.Producer
-	keyID uint
+	keyID    uint
 }
 
 func NewProducer(broker string) (*Producer, error) {
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": broker,
+		"acks":              "all",
+		"retries":           5,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &Producer{
 		producer: p,
-		keyID: 0,
+		keyID:    0,
 	}, nil
 }
 

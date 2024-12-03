@@ -27,7 +27,7 @@ const (
 				WHERE id = $1;`
 
 	updateBalanceSQL =
-	/* sql */ `UPDATE TABLE public.users
+	/* sql */ `UPDATE public.users
 				SET balance = balance + ($1)
 				WHERE id = $2;`
 
@@ -38,7 +38,7 @@ const (
 type UserRepository interface {
 	GetIDPasswordHash(ctx context.Context, email string) (int, string, bool, error)
 	GetUser(ctx context.Context, id int) (model.User, error)
-	ChangeBalance(ctx context.Context, id, diff int) error
+	ChangeBalance(ctx context.Context, id int, diff uint) error
 	PayForOrder(ctx context.Context, userID int, orderID int) error
 }
 
@@ -74,7 +74,7 @@ func (u *userRepository) GetUser(ctx context.Context, id int) (model.User, error
 	return result, err
 }
 
-func (u *userRepository) ChangeBalance(ctx context.Context, id, diff int) error {
+func (u *userRepository) ChangeBalance(ctx context.Context, id int, diff uint) error {
 	return u.db.Exec(ctx, updateBalanceSQL, diff, id)
 }
 

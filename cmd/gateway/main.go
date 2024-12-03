@@ -11,6 +11,7 @@ import (
 	"github.com/allnightmarel0Ng/albums/internal/app/gateway/usecase"
 	"github.com/allnightmarel0Ng/albums/internal/config"
 	domainRepository "github.com/allnightmarel0Ng/albums/internal/domain/repository"
+	"github.com/allnightmarel0Ng/albums/internal/infrastructure/kafka"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
 	"github.com/gin-gonic/gin"
 )
@@ -27,8 +28,14 @@ func main() {
 	}
 	defer db.Close()
 
+	p, err := kafka.NewProducer(fmt.Sprintf("kafka:%s", conf.KafkaPort))
+	if err != nil {
+		log.Fatalf("unable to create a producer: %s", err.Error())
+	}
+	defer p.Close()
+
 	repo := repository.NewGatewayRepository(domainRepository.NewAlbumRepository(db))
-	useCase := usecase.NewGatewayUseCase(repo, conf.AuthorizationPort, conf.ProfilePort, conf.OrderManagementPort, conf.JwtSecretKey)
+	useCase := usecase.NewGatewayUseCase(repo, p, conf.AuthorizationPort, conf.ProfilePort, conf.OrderManagementPort, conf.JwtSecretKey)
 	handler := handler.NewGatewayHandler(useCase)
 
 	router := gin.Default()
@@ -39,6 +46,8 @@ func main() {
 	router.POST("/add/:id", handler.HandleOrderAdd)
 	router.POST("/remove/:id", handler.HandleOrderRemove)
 	router.GET("/orders", handler.HandleOrders)
+	router.POST("/deposit", handler.HandleDeposit)
+	router.POST("/buy", handler.HandleBuy)
 
 	log.Fatal(http.ListenAndServe(":"+conf.GatewayPort, router))
 }

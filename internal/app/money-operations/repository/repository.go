@@ -7,7 +7,7 @@ import (
 )
 
 type MoneyOperationsRepository interface {
-	Deposit(ctx context.Context, id, diff int) error
+	Deposit(ctx context.Context, id int, diff uint) error
 	BuyOrder(ctx context.Context, userID, albumID int) error
 }
 
@@ -21,7 +21,7 @@ func NewMoneyOperationsRepository(users repository.UserRepository) MoneyOperatio
 	}
 }
 
-func (m *moneyOperationsRepository) Deposit(ctx context.Context, id, diff int) error {
+func (m *moneyOperationsRepository) Deposit(ctx context.Context, id int, diff uint) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -30,11 +30,11 @@ func (m *moneyOperationsRepository) Deposit(ctx context.Context, id, diff int) e
 	}
 }
 
-func (m *moneyOperationsRepository) BuyOrder(ctx context.Context, userID, albumID int) error {
+func (m *moneyOperationsRepository) BuyOrder(ctx context.Context, userID, orderID int) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		return m.users.PayForOrder(ctx, userID, albumID)
+		return m.users.PayForOrder(ctx, userID, orderID)
 	}
 }

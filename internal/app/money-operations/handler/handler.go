@@ -30,15 +30,16 @@ func (m *moneyOperationsHandler) Handle() {
 	m.consumer.ConsumeMessagesEternally(m.forkMessages, log.Printf, log.Printf)
 }
 
-func (m *moneyOperationsHandler) handleDeposit(userID, diff int) {
+func (m *moneyOperationsHandler) handleDeposit(userID int, diff uint) {
 	m.useCase.Deposit(userID, diff)
 }
 
-func (m *moneyOperationsHandler) handleBuy(userID, albumID int) {
-	m.useCase.BuyOrder(userID, albumID)
+func (m *moneyOperationsHandler) handleBuy(userID, orderID int) {
+	m.useCase.BuyOrder(userID, orderID)
 }
 
 func (m *moneyOperationsHandler) forkMessages(msg []byte) error {
+	log.Print(string(msg))
 	var operation api.MoneyOperationKafkaMessage
 	if err := json.Unmarshal(msg, &operation); err != nil {
 		return err
@@ -48,7 +49,7 @@ func (m *moneyOperationsHandler) forkMessages(msg []byte) error {
 	case "deposit":
 		go m.handleDeposit(operation.UserID, operation.Diff)
 	case "buy":
-		go m.handleBuy(operation.UserID, operation.Diff)
+		go m.handleBuy(operation.UserID, operation.OrderID)
 	default:
 		return errors.New("unknown message type")
 	}

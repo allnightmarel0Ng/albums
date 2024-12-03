@@ -92,7 +92,7 @@ BEGIN
     FROM public.orders
     WHERE id = p_order_id;
 
-    IF d_total_price IS NULL OR is_paid = TRUE THEN
+    IF d_total_price IS NULL OR d_is_paid = TRUE THEN
         ROLLBACK;
     END IF;
 
@@ -104,11 +104,11 @@ BEGIN
         ROLLBACK;
     END IF;
 
-    UPDATE TABLE public.orders
+    UPDATE public.orders
     SET is_paid = TRUE
     WHERE id = p_order_id;
 
-    UPDATE TABLE public.users
+    UPDATE public.users
     SET balance = balance - d_total_price
     WHERE id = p_user_id;
 END;
@@ -120,7 +120,11 @@ BEGIN
     IF NEW.is_paid = TRUE AND OLD.is_paid = FALSE THEN
         INSERT INTO public.buy_logs (buyer_id, album_id)
         SELECT NEW.user_id, oi.album_id
-        FROM public.order_items oi
+        FROM public.order_items AS oi
+        WHERE oi.order_id = NEW.id;
+        INSERT INTO public.purchased_albums (user_id, album_id)
+        SELECT NEW.user_id, oi.album_id
+        FROM public.order_items AS oi
         WHERE oi.order_id = NEW.id;
     END IF;
 

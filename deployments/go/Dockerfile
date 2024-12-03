@@ -8,8 +8,13 @@ RUN go mod download
 
 COPY . .
 
+RUN apk --no-cache update && \
+    apk --no-cache add gcc libc-dev
+
+ENV CGO_ENABLED 1
+
 ARG SERVICE_NAME
-RUN go build -o main ./cmd/${SERVICE_NAME}
+RUN go build -tags musl -o main ./cmd/${SERVICE_NAME}
 
 FROM alpine:3.19
 

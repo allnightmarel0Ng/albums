@@ -20,7 +20,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
     ports:
       - "${KAFKA_PORT}:${KAFKA_PORT}"
     healthcheck:
@@ -28,6 +28,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  # init-kafka:
+  #   image: confluentinc/cp-kafka:6.1.1
+  #   depends_on:
+  #     - kafka
+  #   entrypoint: [ "/bin/sh", "-c" ]
+  #   command: |
+  #     "
+  #     kafka-topics --bootstrap-server kafka:9092 --list
+  #     kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic money-operations --replication-factor 1 --partitions 5
+  #     kafka-topics --bootstrap-server kafka:9092 --list
+  #     "
 
   redis:
     image: redis:latest
@@ -129,12 +141,12 @@ services:
     init: true
 
   money-operations:
-    container_name: money-management
+    container_name: money-operations
     build:
       context: ..
       dockerfile: deployments/go/Dockerfile
       args:
-        SERVICE_NAME: order-management
+        SERVICE_NAME: money-operations
         EXPOSE_PORT: "false"
     depends_on:
       postgres:

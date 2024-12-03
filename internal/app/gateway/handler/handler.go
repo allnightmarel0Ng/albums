@@ -18,6 +18,8 @@ type GatewayHandler interface {
 	HandleOrderAdd(c *gin.Context)
 	HandleOrderRemove(c *gin.Context)
 	HandleOrders(c *gin.Context)
+	HandleDeposit(c *gin.Context)
+	HandleBuy(c *gin.Context)
 }
 
 type gatewayHandler struct {
@@ -58,7 +60,7 @@ func (g *gatewayHandler) HandleUserProfile(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, g.useCase.UserProfile(authHeader[len("Bearer "):]))
+	utils.Send(c, g.useCase.UserProfile(authHeader))
 }
 
 func (g *gatewayHandler) HandleArtistProfile(c *gin.Context) {
@@ -102,7 +104,7 @@ func handleOrderAction(c *gin.Context, callback func(int, string) api.Response) 
 		return
 	}
 
-	utils.Send(c, callback(id, authHeader[len("Bearer "):]))
+	utils.Send(c, callback(id, authHeader))
 }
 
 func (g *gatewayHandler) HandleOrders(c *gin.Context) {
@@ -116,5 +118,55 @@ func (g *gatewayHandler) HandleOrders(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, g.useCase.UserOrders(authHeader[len("Bearer "):]))
+	utils.Send(c, g.useCase.UserOrders(authHeader))
+}
+
+func (g *gatewayHandler) HandleDeposit(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	var request api.DepositRequest
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "invalid body in request",
+		})
+		return
+	}
+
+	response := g.useCase.Deposit(authHeader, request.Money)
+	if response != nil {
+		utils.Send(c, response)
+		return
+	}
+
+	c.String(http.StatusOK, "")
+}
+
+func (g *gatewayHandler) HandleBuy(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	response := g.useCase.Buy(authHeader)
+	if response != nil {
+		utils.Send(c, response)
+		return
+	}
+
+	c.String(http.StatusOK, "")
 }

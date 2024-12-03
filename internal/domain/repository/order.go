@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"strings"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
@@ -37,14 +38,15 @@ const (
 				JOIN public.order_items AS oi ON oi.order_id = o.id
 				RIGHT JOIN public.albums AS a ON oi.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
-				WHERE u.id = $1;
+				WHERE u.id = $1
 				`
+	isPaidFilterSQl = " AND o.is_paid = FALSE;"
 )
 
 type OrderRepository interface {
 	AddAlbumToUserOrder(ctx context.Context, userID, albumID int) error
 	DeleteAlbumFromUserOrder(ctx context.Context, userID, albumID int) error
-	GetUserOrders(ctx context.Context, userID int) ([]model.Order, error)
+	GetUserOrders(ctx context.Context, userID int, unpaidOnly bool) ([]model.Order, error)
 }
 
 type orderRepository struct {
@@ -67,8 +69,27 @@ func (o *orderRepository) DeleteAlbumFromUserOrder(ctx context.Context, userID, 
 	return err
 }
 
-func (o *orderRepository) GetUserOrders(ctx context.Context, userID int) ([]model.Order, error) {
-	rows, err := o.db.Query(ctx, selectUserOrdersSQL, userID)
+func (o *orderRepository) GetUserOrders(ctx context.Context, userID int, unpaidOnly bool) ([]model.Order, error) {
+	var sb strings.Builder
+	_, err := sb.WriteString(selectUserOrdersSQL)
+	if err != nil {
+		return nil, err
+	}
+
+	switch unpaidOnly {
+	case true:
+		_, err := sb.WriteString(isPaidFilterSQl)
+		if err != nil {
+			return nil, err
+		}
+	case false:
+		_, err := sb.WriteRune(';')
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	rows, err := o.db.Query(ctx, sb.String(), userID)
 	if err != nil {
 		return nil, err
 	}

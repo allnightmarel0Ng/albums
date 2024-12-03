@@ -2,12 +2,13 @@ package usecase
 
 import (
 	"context"
+	"log"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/money-operations/repository"
 )
 
 type MoneyOperationsUseCase interface {
-	Deposit(id, diff int)
+	Deposit(id int, diff uint)
 	BuyOrder(userID, albumID int)
 }
 
@@ -21,10 +22,10 @@ func NewMoneyOperationsUseCase(repo repository.MoneyOperationsRepository) MoneyO
 	}
 }
 
-func (m *moneyOperationsUseCase) Deposit(id, diff int) {
-	m.repo.Deposit(context.Background(), id, diff)
+func (m *moneyOperationsUseCase) Deposit(id int, diff uint) {
+	log.Print(m.repo.Deposit(context.Background(), id, diff))
 }
 
-func (m *moneyOperationsUseCase) BuyOrder(userID, albumID int) {
-	m.repo.BuyOrder(context.Background(), userID, albumID)
+func (m *moneyOperationsUseCase) BuyOrder(userID, orderID int) {
+	m.repo.BuyOrder(context.Background(), userID, orderID)
 }

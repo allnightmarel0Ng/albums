@@ -10,7 +10,7 @@ import (
 type OrderManagementRepository interface {
 	AddToOrder(ctx context.Context, userID, albumID int) error
 	RemoveFromOrder(ctx context.Context, userID, albumID int) error
-	UserOrder(ctx context.Context, userID int) ([]model.Order, error)
+	UserOrder(ctx context.Context, userID int, unpaidOnly bool) ([]model.Order, error)
 }
 
 type orderManagementRepository struct {
@@ -41,11 +41,11 @@ func (o *orderManagementRepository) RemoveFromOrder(ctx context.Context, userID,
 	}
 }
 
-func (o *orderManagementRepository) UserOrder(ctx context.Context, userID int) ([]model.Order, error) {
+func (o *orderManagementRepository) UserOrder(ctx context.Context, userID int, unpaidOnly bool) ([]model.Order, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
-		return o.orders.GetUserOrders(ctx, userID)
+		return o.orders.GetUserOrders(ctx, userID, unpaidOnly)
 	}
 }
