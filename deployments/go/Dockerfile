@@ -19,6 +19,10 @@ COPY --from=builder /app/main .
 COPY --from=builder /app/.env .
 
 ARG SERVICE_PORT
-EXPOSE ${SERVICE_PORT}
+ARG EXPOSE_PORT
+
+RUN if [ -n "$EXPOSE_PORT" ]; then \
+        echo "EXPOSE $SERVICE_PORT" >> /app/Dockerfile.tmp; \
+    fi
 
 CMD ["./main"]

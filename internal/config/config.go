@@ -11,6 +11,7 @@ type Config struct {
 	PostgresPort        string
 	PostgresUser        string
 	PostgresPassword    string
+	KafkaPort           string
 	RedisPort           string
 	JwtSecretKey        string
 	AuthorizationPort   string
@@ -30,6 +31,7 @@ func LoadConfig() (*Config, error) {
 		PostgresPort:        os.Getenv("POSTGRES_PORT"),
 		PostgresUser:        os.Getenv("POSTGRES_USER"),
 		PostgresPassword:    os.Getenv("POSTGRES_PASSWORD"),
+		KafkaPort:           os.Getenv("KAFKA_PORT"),
 		RedisPort:           os.Getenv("REDIS_PORT"),
 		JwtSecretKey:        os.Getenv("JWT_SECRET_KEY"),
 		AuthorizationPort:   os.Getenv("AUTHORIZATION_PORT"),

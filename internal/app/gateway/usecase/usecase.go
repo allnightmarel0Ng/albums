@@ -31,11 +31,11 @@ type gatewayUseCase struct {
 
 func NewGatewayUseCase(repo repository.GatewayRepository, authorizationPort, profilePort, orderManagementPort, jwtSecretKey string) GatewayUseCase {
 	return &gatewayUseCase{
-		repo:              repo,
-		authorizationPort: authorizationPort,
-		profilePort:       profilePort,
+		repo:                repo,
+		authorizationPort:   authorizationPort,
+		profilePort:         profilePort,
 		orderManagementPort: orderManagementPort,
-		jwtSecretKey:      jwtSecretKey,
+		jwtSecretKey:        jwtSecretKey,
 	}
 }
 
@@ -107,13 +107,13 @@ func (g *gatewayUseCase) orderAction(albumID int, jsonWebToken string, action st
 
 	claims := authorizationResponse.(*api.AuthorizationResponse)
 	body, err := json.Marshal(api.OrderActionRequest{
-		UserID: claims.ID,
+		UserID:  claims.ID,
 		AlbumID: albumID,
 	})
 	if err != nil {
 		return utils.InterserviceCommunicationError()
 	}
-	
+
 	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
@@ -224,8 +224,8 @@ func (g *gatewayUseCase) authorize(jsonWebToken string) (int, api.Response) {
 	json.NewDecoder(response.Body).Decode(&result)
 
 	if response.StatusCode != http.StatusOK {
-		return http.StatusUnauthorized, &api.ErrorResponse {
-			Code: http.StatusUnauthorized,
+		return http.StatusUnauthorized, &api.ErrorResponse{
+			Code:  http.StatusUnauthorized,
 			Error: result.Error,
 		}
 	}

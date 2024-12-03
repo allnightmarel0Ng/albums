@@ -8,6 +8,8 @@ require (
 	github.com/lib/pq v1.10.2
 )
 
+require github.com/confluentinc/confluent-kafka-go/v2 v2.6.1
+
 require (
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
@@ -32,8 +34,8 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
@@ -49,6 +51,6 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/puddle v1.3.0 // indirect
-	golang.org/x/crypto v0.23.0
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/crypto v0.27.0
+	golang.org/x/text v0.18.0 // indirect
 )

@@ -11,6 +11,7 @@ import (
 type Database interface {
 	Query(ctx context.Context, sql string, args ...interface{}) (Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...interface{}) Row
+	Exec(ctx context.Context, sql string, args ...interface{}) error
 
 	Close()
 
@@ -55,6 +56,11 @@ func (db *db) Query(ctx context.Context, sql string, args ...interface{}) (Rows,
 
 func (db *db) QueryRow(ctx context.Context, sql string, args ...interface{}) Row {
 	return NewRow(db.pool.QueryRow(ctx, sql, args...))
+}
+
+func (db *db) Exec(ctx context.Context, sql string, args ...interface{}) error {
+	_, err := db.pool.Exec(ctx, sql, args...)
+	return err
 }
 
 func (db *db) Close() {

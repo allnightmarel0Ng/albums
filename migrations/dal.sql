@@ -13,9 +13,9 @@ BEGIN
         ROLLBACK;
     END IF;
 
-    SELECT o.id INTO d_order_id
-    FROM public.orders AS o
-    WHERE o.user_id = p_user_id AND o.is_paid = FALSE;
+    SELECT id INTO d_order_id
+    FROM public.orders 
+    WHERE user_id = p_user_id AND is_paid = FALSE;
 
     IF d_order_id IS NULL THEN
         INSERT INTO public.orders (user_id) 
@@ -80,3 +80,55 @@ BEGIN
     WHERE id = d_order_id;
 END;
 $$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE PROCEDURE pay_for_order(p_user_id INT, p_order_id INT)
+AS $$
+DECLARE
+    d_total_price DECIMAL(10, 2);
+    d_user_balance INT;
+    d_is_paid BOOLEAN;
+BEGIN
+    SELECT total_price, is_paid INTO d_total_price, d_is_paid
+    FROM public.orders
+    WHERE id = p_order_id;
+
+    IF d_total_price IS NULL OR is_paid = TRUE THEN
+        ROLLBACK;
+    END IF;
+
+    SELECT balance INTO d_user_balance
+    FROM public.users
+    WHERE id = p_user_id;
+
+    IF d_user_balance IS NULL OR d_user_balance < d_total_price THEN
+        ROLLBACK;
+    END IF;
+
+    UPDATE TABLE public.orders
+    SET is_paid = TRUE
+    WHERE id = p_order_id;
+
+    UPDATE TABLE public.users
+    SET balance = balance - d_total_price
+    WHERE id = p_user_id;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION log_paid_order()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.is_paid = TRUE AND OLD.is_paid = FALSE THEN
+        INSERT INTO public.buy_logs (buyer_id, album_id)
+        SELECT NEW.user_id, oi.album_id
+        FROM public.order_items oi
+        WHERE oi.order_id = NEW.id;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER orders_paid_trigger
+AFTER UPDATE ON public.orders
+FOR EACH ROW
+EXECUTE FUNCTION log_paid_order();
