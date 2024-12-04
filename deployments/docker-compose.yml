@@ -158,6 +158,22 @@ services:
         condition: service_healthy
     init: true
 
+  admin-panel:
+    container_name: admin-panel
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: admin-panel
+        SERVICE_PORT: ${ADMIN_PANEL_PORT}
+        EXPOSE_PORT: "true"
+    ports:
+      - "${ADMIN_PANEL_PORT}:${ADMIN_PANEL_PORT}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    init: true
+
   gateway:
     container_name: gateway
     build:

@@ -81,6 +81,10 @@ const (
 				JOIN public.artists AS ar ON a.artist_id = ar.id
 				ORDER BY RANDOM()
 				LIMIT $1;`
+
+	deleteAlbumSQL =
+	/* sql */ `DELETE FROM public.albums
+				WHERE id = $1;`
 )
 
 type AlbumRepository interface {
@@ -88,6 +92,7 @@ type AlbumRepository interface {
 	GetAlbumsLikeName(ctx context.Context, name string) ([]model.Album, error)
 	GetArtistsAlbums(ctx context.Context, artistID int) ([]model.Album, error)
 	GetRandomNAlbums(ctx context.Context, count uint) ([]model.Album, error)
+	DeleteAlbum(ctx context.Context, albumID int) error
 }
 
 type albumRepository struct {
@@ -171,4 +176,8 @@ func (a *albumRepository) GetRandomNAlbums(ctx context.Context, count uint) ([]m
 	}
 
 	return albumsFromRows(rows)
+}
+
+func (l *albumRepository) DeleteAlbum(ctx context.Context, albumID int) error {
+	return l.db.Exec(ctx, deleteAlbumSQL, albumID)
 }

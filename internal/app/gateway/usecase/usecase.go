@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/exec"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/kafka"
@@ -18,30 +20,59 @@ type GatewayUseCase interface {
 	Search(body io.Reader) (int, []byte)
 	UserProfile(jsonWebToken string) (int, []byte)
 	ArtistProfile(id int) (int, []byte)
-	AddToOrder(albumID int, jsonWebToken string) (int, []byte)
-	RemoveFromOrder(albumID int, jsonWebToken string) (int, []byte)
+	AddToOrder(authHeader string, albumID int) (int, []byte)
+	RemoveFromOrder(authHeader string, albumID int) (int, []byte)
 	UserOrders(jsonWebToken string) (int, []byte)
 	Deposit(authHeader string, diff uint) api.Response
 	Buy(authHeader string) api.Response
+	Logs(authHeader string, params string) (int, []byte)
+	DeleteAlbum(authHeader string, params string) (int, []byte)
+	SaveDump(authHeader string) (int, []byte)
+	LoadDump(authHEader, filePath string) (int, []byte)
 }
 
 type gatewayUseCase struct {
-	producer            *kafka.Producer
+	producer *kafka.Producer
+
 	authorizationPort   string
 	profilePort         string
 	orderManagementPort string
 	searchEnginePort    string
-	jwtSecretKey        string
+	adminPanelPort      string
+
+	jwtSecretKey string
+
+	postgresUser     string
+	postgresPassword string
+	postgresPort     string
+	postgresDB       string
 }
 
-func NewGatewayUseCase(producer *kafka.Producer, authorizationPort, profilePort, orderManagementPort, searchEnginePort, jwtSecretKey string) GatewayUseCase {
+func NewGatewayUseCase(
+	producer *kafka.Producer,
+	authorizationPort,
+	profilePort,
+	orderManagementPort,
+	searchEnginePort,
+	adminPanelPort,
+	jwtSecretKey,
+	postgresUser,
+	postgresPassword,
+	postgresPort,
+	postgresDB string) GatewayUseCase {
 	return &gatewayUseCase{
 		producer:            producer,
 		authorizationPort:   authorizationPort,
 		profilePort:         profilePort,
 		orderManagementPort: orderManagementPort,
 		searchEnginePort:    searchEnginePort,
+		adminPanelPort:      adminPanelPort,
 		jwtSecretKey:        jwtSecretKey,
+
+		postgresUser:     postgresUser,
+		postgresPassword: postgresPassword,
+		postgresPort:     postgresPort,
+		postgresDB:       postgresDB,
 	}
 }
 
@@ -49,11 +80,11 @@ func (g *gatewayUseCase) Authentication(authHeader string) (int, []byte) {
 	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://authorization:%s/authenticate", g.authorizationPort), authHeader, nil)
 }
 
-func (g *gatewayUseCase) UserProfile(jsonWebToken string) (int, []byte) {
-	code, authorizationResponse := g.authorize(jsonWebToken)
-	if code != http.StatusOK {
+func (g *gatewayUseCase) UserProfile(authHeader string) (int, []byte) {
+	authorizationResponse := g.authorize(authHeader)
+	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)
-		return code, raw
+		return authorizationResponse.GetCode(), raw
 	}
 
 	claims := authorizationResponse.(*api.AuthorizationResponse)
@@ -65,24 +96,17 @@ func (g *gatewayUseCase) ArtistProfile(id int) (int, []byte) {
 	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://profile:%s/artists/%d", g.profilePort, id), "", nil)
 }
 
-func (g *gatewayUseCase) AddToOrder(albumID int, jsonWebToken string) (int, []byte) {
-	return g.orderAction(albumID, jsonWebToken, "add")
+func (g *gatewayUseCase) AddToOrder(authHeader string, albumID int) (int, []byte) {
+	return g.orderAction(albumID, authHeader, "add")
 }
 
-func (g *gatewayUseCase) RemoveFromOrder(albumID int, jsonWebToken string) (int, []byte) {
-	return g.orderAction(albumID, jsonWebToken, "remove")
+func (g *gatewayUseCase) RemoveFromOrder(authHeader string, albumID int) (int, []byte) {
+	return g.orderAction(albumID, authHeader, "remove")
 }
 
 func (g *gatewayUseCase) Deposit(authHeader string, diff uint) api.Response {
-	if diff <= 0 {
-		return &api.ErrorResponse{
-			Code:  http.StatusBadRequest,
-			Error: "trying to deposit negative amount of money",
-		}
-	}
-
-	code, authResponse := g.authorize(authHeader)
-	if code != http.StatusOK {
+	authResponse := g.authorize(authHeader)
+	if authResponse.GetCode() != http.StatusOK {
 		return authResponse
 	}
 
@@ -111,8 +135,8 @@ func (g *gatewayUseCase) Deposit(authHeader string, diff uint) api.Response {
 }
 
 func (g *gatewayUseCase) Buy(authHeader string) api.Response {
-	code, authResponse := g.authorize(authHeader)
-	if code != http.StatusOK {
+	authResponse := g.authorize(authHeader)
+	if authResponse.GetCode() != http.StatusOK {
 		return authResponse
 	}
 
@@ -158,30 +182,11 @@ func (g *gatewayUseCase) Buy(authHeader string) api.Response {
 	return nil
 }
 
-func (g *gatewayUseCase) orderAction(albumID int, authHeader string, action string) (int, []byte) {
-	code, authorizationResponse := g.authorize(authHeader)
-	if code != http.StatusOK {
-		raw, _ := json.Marshal(authorizationResponse)
-		return code, raw
-	}
-
-	claims := authorizationResponse.(*api.AuthorizationResponse)
-	body, err := json.Marshal(api.OrderActionRequest{
-		UserID:  claims.ID,
-		AlbumID: albumID,
-	})
-	if err != nil {
-		return utils.InterserviceCommunicationErrorRaw()
-	}
-
-	return utils.RequestAndParseResponse("POST", fmt.Sprintf("http://order-management:%s/%s", g.orderManagementPort, action), "", bytes.NewReader(body))
-}
-
 func (g *gatewayUseCase) UserOrders(authHeader string) (int, []byte) {
-	code, authorizationResponse := g.authorize(authHeader)
-	if code != http.StatusOK {
+	authorizationResponse := g.authorize(authHeader)
+	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)
-		return code, raw
+		return authorizationResponse.GetCode(), raw
 	}
 
 	claims := authorizationResponse.(*api.AuthorizationResponse)
@@ -197,45 +202,101 @@ func (g *gatewayUseCase) Search(body io.Reader) (int, []byte) {
 	return utils.RequestAndParseResponse("POST", fmt.Sprintf("http://search-engine:%s/search", g.searchEnginePort), "", body)
 }
 
-// func (g *gatewayUseCase) nonAdminMainPage() api.Response {
-// 	ctx, cancel := utils.DeadlineContext(2)
-// 	defer cancel()
+func (g *gatewayUseCase) Logs(authHeader string, params string) (int, []byte) {
+	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	if adminAuthorizationCode != http.StatusOK {
+		return adminAuthorizationCode, raw
+	}
 
-// 	albums, err := g.repo.GetAllAlbums(ctx)
-// 	if err != nil {
-// 		return &api.AlbumsResponse{
-// 			Code:  http.StatusInternalServerError,
-// 			Error: "retrieving from db error",
-// 		}
-// 	}
+	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://admin-panel:%s/logs/%s", g.adminPanelPort, params), "", nil)
+}
 
-// 	if albums == nil {
-// 		return &api.AlbumsResponse{
-// 			Code:  http.StatusNotFound,
-// 			Error: "no albums found",
-// 		}
-// 	}
+func (g *gatewayUseCase) DeleteAlbum(authHeader string, params string) (int, []byte) {
+	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	if adminAuthorizationCode != http.StatusOK {
+		return adminAuthorizationCode, raw
+	}
 
-// 	return &api.AlbumsResponse{
-// 		Code: http.StatusOK,
-// 		Data: albums,
-// 	}
-// }
+	return utils.RequestAndParseResponse("DELETE", fmt.Sprintf("http://admin-panel:%s/delete/%s", g.adminPanelPort, params), "", nil)
+}
 
-func (g *gatewayUseCase) authorize(authHeader string) (int, api.Response) {
+func (g *gatewayUseCase) SaveDump(authHeader string) (int, []byte) {
+	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	if adminAuthorizationCode != http.StatusOK {
+		return adminAuthorizationCode, raw
+	}
+
+	cmd := exec.Command("pg_dump", "--clean", "-U", g.postgresUser, "-h", "postgres", "-p", g.postgresPort, g.postgresDB)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", g.postgresPassword))
+
+	output, err := cmd.Output()
+	if err != nil {
+		raw, _ := json.Marshal(api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "unable to create dump",
+		})
+		return http.StatusInternalServerError, raw
+	}
+
+	return http.StatusOK, output
+}
+
+func (g *gatewayUseCase) LoadDump(authHeader, filePath string) (int, []byte) {
+	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	if adminAuthorizationCode != http.StatusOK {
+		return adminAuthorizationCode, raw
+	}
+
+	cmd := exec.Command("psql", "-U", g.postgresUser, "-h", "postgres", "-p", g.postgresPort, g.postgresDB, "-f", filePath)
+
+	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", g.postgresPassword))
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		raw, _ := json.Marshal(api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "unable to load sql dump",
+		})
+		return http.StatusInternalServerError, raw
+	}
+
+	// log.Print(string(output))
+	return http.StatusOK, output
+}
+
+func (g *gatewayUseCase) authorizeAdmin(authHeader string) (int, []byte) {
+	authorizationResponse := g.authorize(authHeader)
+	if authorizationResponse.GetCode() != http.StatusOK {
+		raw, _ := json.Marshal(authorizationResponse)
+		return authorizationResponse.GetCode(), raw
+	}
+
+	claims := authorizationResponse.(*api.AuthorizationResponse)
+	if !claims.IsAdmin {
+		raw, _ := json.Marshal(api.ErrorResponse{
+			Code:  http.StatusUnauthorized,
+			Error: "non-admin user cannot do that",
+		})
+		return http.StatusUnauthorized, raw
+	}
+
+	return http.StatusOK, nil
+}
+
+func (g *gatewayUseCase) authorize(authHeader string) api.Response {
 	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
 	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://authorization:%s/authorize", g.authorizationPort), nil)
 	if err != nil {
-		return http.StatusInternalServerError, utils.InterserviceCommunicationError()
+		return utils.InterserviceCommunicationError()
 	}
 	request.Header.Set("Authorization", authHeader)
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return http.StatusInternalServerError, utils.InterserviceCommunicationError()
+		return utils.InterserviceCommunicationError()
 	}
 	defer response.Body.Close()
 
@@ -243,10 +304,31 @@ func (g *gatewayUseCase) authorize(authHeader string) (int, api.Response) {
 	json.NewDecoder(response.Body).Decode(&result)
 
 	if response.StatusCode != http.StatusOK {
-		return http.StatusUnauthorized, &api.ErrorResponse{
+		return &api.ErrorResponse{
 			Code:  http.StatusUnauthorized,
 			Error: result.Error,
 		}
 	}
-	return http.StatusOK, &result
+
+	result.Code = http.StatusOK
+	return &result
+}
+
+func (g *gatewayUseCase) orderAction(albumID int, authHeader string, action string) (int, []byte) {
+	authorizationResponse := g.authorize(authHeader)
+	if authorizationResponse.GetCode() != http.StatusOK {
+		raw, _ := json.Marshal(authorizationResponse)
+		return authorizationResponse.GetCode(), raw
+	}
+
+	claims := authorizationResponse.(*api.AuthorizationResponse)
+	body, err := json.Marshal(api.OrderActionRequest{
+		UserID:  claims.ID,
+		AlbumID: albumID,
+	})
+	if err != nil {
+		return utils.InterserviceCommunicationErrorRaw()
+	}
+
+	return utils.RequestAndParseResponse("POST", fmt.Sprintf("http://order-management:%s/%s", g.orderManagementPort, action), "", bytes.NewReader(body))
 }

@@ -18,6 +18,7 @@ type Config struct {
 	ProfilePort         string
 	OrderManagementPort string
 	SearchEnginePort    string
+	AdminPanelPort      string
 	GatewayPort         string
 }
 
@@ -39,6 +40,7 @@ func LoadConfig() (*Config, error) {
 		ProfilePort:         os.Getenv("PROFILE_PORT"),
 		OrderManagementPort: os.Getenv("ORDER_MANAGEMENT_PORT"),
 		SearchEnginePort:    os.Getenv("SEARCH_ENGINE_PORT"),
+		AdminPanelPort:      os.Getenv("ADMIN_PANEL_PORT"),
 		GatewayPort:         os.Getenv("GATEWAY_PORT"),
 	}, nil
 }

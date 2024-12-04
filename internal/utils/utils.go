@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -140,14 +139,32 @@ func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
 	return context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
 }
 
-func GetIDParam(c *gin.Context) (int, error) {
-	idStr, ok := c.Params.Get("id")
+func GetParam[T any](c *gin.Context, name string) (T, error) {
+	var result T
+
+	paramStr, ok := c.Params.Get(name)
 	if !ok {
-		return 0, errors.New("id param not found")
+		return result, fmt.Errorf("param not found")
 	}
 
-	id, err := strconv.Atoi(idStr)
-	return id, err
+	switch any(result).(type) {
+	case int:
+		val, err := strconv.Atoi(paramStr)
+		if err != nil {
+			return result, err
+		}
+		result = any(val).(T)
+	case uint:
+		val, err := strconv.ParseUint(paramStr, 10, 64)
+		if err != nil {
+			return result, err
+		}
+		result = any(val).(T)
+	default:
+		return result, fmt.Errorf("unsupported type: %T", result)
+	}
+
+	return result, nil
 }
 
 func SearchLikeString(str string) string {

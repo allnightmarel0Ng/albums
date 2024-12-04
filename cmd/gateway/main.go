@@ -24,7 +24,7 @@ func main() {
 	}
 	defer p.Close()
 
-	useCase := usecase.NewGatewayUseCase(p, conf.AuthorizationPort, conf.ProfilePort, conf.OrderManagementPort, conf.SearchEnginePort, conf.JwtSecretKey)
+	useCase := usecase.NewGatewayUseCase(p, conf.AuthorizationPort, conf.ProfilePort, conf.OrderManagementPort, conf.SearchEnginePort, conf.AdminPanelPort, conf.JwtSecretKey, conf.PostgresUser, conf.PostgresPassword, conf.PostgresPort, conf.PostgresDb)
 	handler := handler.NewGatewayHandler(useCase)
 
 	router := gin.Default()
@@ -38,6 +38,10 @@ func main() {
 	router.POST("/deposit", handler.HandleDeposit)
 	router.POST("/buy", handler.HandleBuy)
 	router.POST("/search", handler.HandleSearch)
+	router.GET("/admin-panel/logs/:pageNumber", handler.HandleLogs)
+	router.DELETE("/admin-panel/delete/:id", handler.HandleDelete)
+	router.GET("/admin-panel/save-dump", handler.HandleSaveDump)
+	router.POST("/admin-panel/load-dump", handler.HandleLoadDump)
 
 	log.Fatal(http.ListenAndServe(":"+conf.GatewayPort, router))
 }

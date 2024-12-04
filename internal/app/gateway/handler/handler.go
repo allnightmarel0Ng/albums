@@ -1,8 +1,12 @@
 package handler
 
 import (
+	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/gateway/usecase"
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
@@ -21,6 +25,10 @@ type GatewayHandler interface {
 	HandleOrders(c *gin.Context)
 	HandleDeposit(c *gin.Context)
 	HandleBuy(c *gin.Context)
+	HandleLogs(c *gin.Context)
+	HandleDelete(c *gin.Context)
+	HandleSaveDump(c *gin.Context)
+	HandleLoadDump(c *gin.Context)
 }
 
 type gatewayHandler struct {
@@ -64,7 +72,7 @@ func (g *gatewayHandler) HandleUserProfile(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleArtistProfile(c *gin.Context) {
-	id, err := utils.GetIDParam(c)
+	id, err := utils.GetParam[int](c, "id")
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
@@ -83,30 +91,6 @@ func (g *gatewayHandler) HandleOrderAdd(c *gin.Context) {
 
 func (g *gatewayHandler) HandleOrderRemove(c *gin.Context) {
 	handleOrderAction(c, g.useCase.RemoveFromOrder)
-}
-
-func handleOrderAction(c *gin.Context, callback func(int, string) (int, []byte)) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
-	id, err := utils.GetIDParam(c)
-	if err != nil {
-		utils.Send(c, &api.ErrorResponse{
-			Code:  http.StatusBadRequest,
-			Error: "invalid id parameter",
-		})
-		return
-	}
-
-	code, raw := callback(id, authHeader)
-	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleOrders(c *gin.Context) {
@@ -172,4 +156,138 @@ func (g *gatewayHandler) HandleBuy(c *gin.Context) {
 	}
 
 	c.String(http.StatusOK, "")
+}
+
+func (g *gatewayHandler) HandleLogs(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	params := c.Param("id")
+	query := c.Request.URL.RawQuery
+	if query != "" {
+		params += "?" + query
+	}
+
+	code, raw := g.useCase.Logs(authHeader, params)
+	utils.SendRaw(c, code, raw)
+}
+
+func (g *gatewayHandler) HandleDelete(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	code, raw := g.useCase.DeleteAlbum(authHeader, c.Param("id"))
+	utils.SendRaw(c, code, raw)
+}
+
+func (g *gatewayHandler) HandleSaveDump(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	code, dump := g.useCase.SaveDump(authHeader)
+	if code != http.StatusOK {
+		utils.SendRaw(c, code, dump)
+		return
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.sql", strings.Replace(time.Now().String(), " ", "_", -1)))
+	c.Header("Content-Type", "application/sql")
+	c.Header("Content-Length", fmt.Sprintf("%d", len(dump)))
+
+	c.Writer.Write(dump)
+}
+
+func (g *gatewayHandler) HandleLoadDump(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	file, err := c.FormFile("dump")
+	if err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "get form error",
+		})
+		log.Print(err.Error())
+		return
+	}
+
+	tempFile, err := os.CreateTemp("", "dump-*.sql")
+	if err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "create temp file error",
+		})
+		log.Print(err.Error())
+		return
+	}
+	defer os.Remove(tempFile.Name())
+
+	if err := c.SaveUploadedFile(file, tempFile.Name()); err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "save file error",
+		})
+		log.Print(err.Error())
+		return
+	}
+
+	code, raw := g.useCase.LoadDump(authHeader, tempFile.Name())
+	if code != http.StatusOK {
+		utils.SendRaw(c, code, raw)
+		return
+	}
+
+	c.String(http.StatusOK, "")
+}
+
+func handleOrderAction(c *gin.Context, callback func(string, int) (int, []byte)) {
+	authHeader := c.GetHeader("Authorization")
+
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+		utils.Send(c, &api.AuthorizationResponse{
+			Code:  http.StatusBadRequest,
+			Error: "wrong auth token",
+		})
+		return
+	}
+
+	id, err := utils.GetParam[int](c, "id")
+	if err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "invalid id parameter",
+		})
+		return
+	}
+
+	code, raw := callback(authHeader, id)
+	utils.SendRaw(c, code, raw)
 }

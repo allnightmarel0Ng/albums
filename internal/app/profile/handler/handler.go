@@ -25,7 +25,7 @@ func NewProfileHandler(useCase usecase.ProfileUseCase) ProfileHandler {
 }
 
 func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
-	id, err := utils.GetIDParam(c)
+	id, err := utils.GetParam[int](c, "id")
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
@@ -38,7 +38,7 @@ func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
 }
 
 func (p *profileHandler) HandleUserProfile(c *gin.Context) {
-	id, err := utils.GetIDParam(c)
+	id, err := utils.GetParam[int](c, "id")
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,

@@ -28,8 +28,9 @@ func (a *AuthenticationResponse) GetCode() int {
 }
 
 type UserProfileResponse struct {
-	Code int        `json:"-"`
-	User model.User `json:"user,omitempty"`
+	Code      int           `json:"-"`
+	User      model.User    `json:"user,omitempty"`
+	Purchased []model.Album `json:"purchasedAlbums,omitempty"`
 }
 
 func (u *UserProfileResponse) GetCode() int {
@@ -84,4 +85,14 @@ type SearchEngineResponse struct {
 
 func (s *SearchEngineResponse) GetCode() int {
 	return s.Code
+}
+
+type BuyLogsResponse struct {
+	Code      int            `json:"-"`
+	Logs      []model.BuyLog `json:"logs"`
+	LogsCount uint           `json:"logsCount"`
+}
+
+func (b *BuyLogsResponse) GetCode() int {
+	return b.Code
 }

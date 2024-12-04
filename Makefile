@@ -18,3 +18,6 @@ logs:
 
 ps:
 	@${PREFIX} ps -a
+
+exec:
+	@${PREFIX} exec ${AT} ${CMD}

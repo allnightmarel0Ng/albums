@@ -8,7 +8,7 @@ import (
 )
 
 type ProfileRepository interface {
-	GetUserProfile(ctx context.Context, id int) (model.User, error)
+	GetUserProfile(ctx context.Context, id int) (model.User, []model.Album, error)
 	GetArtistProfile(ctx context.Context, id int) (model.Artist, []model.Album, error)
 }
 
@@ -26,22 +26,22 @@ func NewProfileRepository(users repository.UserRepository, albums repository.Alb
 	}
 }
 
-func (p *profileRepository) GetUserProfile(ctx context.Context, id int) (model.User, error) {
+func (p *profileRepository) GetUserProfile(ctx context.Context, id int) (model.User, []model.Album, error) {
 	select {
 	case <-ctx.Done():
-		return model.User{}, ctx.Err()
+		return model.User{}, nil, ctx.Err()
 	default:
 		user, err := p.users.GetUser(ctx, id)
 		if err != nil {
-			return model.User{}, err
+			return model.User{}, nil, err
 		}
 
-		user.Purchased, err = p.albums.GetUsersPurchasedAlbums(ctx, id)
+		purchased, err := p.albums.GetUsersPurchasedAlbums(ctx, id)
 		if err != nil {
-			return model.User{}, err
+			return model.User{}, nil, err
 		}
 
-		return user, nil
+		return user, purchased, nil
 	}
 }
 

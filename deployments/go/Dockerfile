@@ -11,6 +11,7 @@ COPY . .
 RUN apk --no-cache update && \
     apk --no-cache add gcc libc-dev
 
+    
 ENV CGO_ENABLED 1
 
 ARG SERVICE_NAME
@@ -22,6 +23,8 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 COPY --from=builder /app/.env .
+    
+RUN apk --no-cache add postgresql-client
 
 ARG SERVICE_PORT
 ARG EXPOSE_PORT

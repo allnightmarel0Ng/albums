@@ -28,7 +28,7 @@ func (p *profileUseCase) GetUserProfile(id int) api.Response {
 	ctx, cancel := utils.DeadlineContext(2)
 	defer cancel()
 
-	user, err := p.repo.GetUserProfile(ctx, id)
+	user, purchased, err := p.repo.GetUserProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())
 		return &api.ErrorResponse{
@@ -38,8 +38,9 @@ func (p *profileUseCase) GetUserProfile(id int) api.Response {
 	}
 
 	return &api.UserProfileResponse{
-		Code: http.StatusOK,
-		User: user,
+		Code:      http.StatusOK,
+		User:      user,
+		Purchased: purchased,
 	}
 }
 
