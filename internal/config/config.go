@@ -17,6 +17,7 @@ type Config struct {
 	AuthorizationPort   string
 	ProfilePort         string
 	OrderManagementPort string
+	SearchEnginePort    string
 	GatewayPort         string
 }
 
@@ -37,6 +38,7 @@ func LoadConfig() (*Config, error) {
 		AuthorizationPort:   os.Getenv("AUTHORIZATION_PORT"),
 		ProfilePort:         os.Getenv("PROFILE_PORT"),
 		OrderManagementPort: os.Getenv("ORDER_MANAGEMENT_PORT"),
+		SearchEnginePort:    os.Getenv("SEARCH_ENGINE_PORT"),
 		GatewayPort:         os.Getenv("GATEWAY_PORT"),
 	}, nil
 }

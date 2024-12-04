@@ -9,12 +9,17 @@ import (
 	"net/http"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 )
+
+func SendRaw(c *gin.Context, code int, response []byte) {
+	c.Data(code, "application/json", response)
+}
 
 func Send(c *gin.Context, response api.Response) {
 	encodedResponse, err := json.Marshal(response)
@@ -38,6 +43,23 @@ func Request(ctx context.Context, method, url, auth string, body io.Reader) (*ht
 	client := &http.Client{}
 	response, err := client.Do(request)
 	return response, err
+}
+
+func RequestAndParseResponse(method, url, auth string, body io.Reader) (int, []byte) {
+	ctx, cancel := DeadlineContext(10)
+	defer cancel()
+
+	response, err := Request(ctx, method, url, auth, body)
+	if err != nil {
+		return InterserviceCommunicationErrorRaw()
+	}
+	defer response.Body.Close()
+
+	result, err := io.ReadAll(response.Body)
+	if err != nil {
+		return InterserviceCommunicationErrorRaw()
+	}
+	return response.StatusCode, result
 }
 
 func SafelyCastJWTClaim[T any](data jwt.MapClaims, fieldName string) (T, error) {
@@ -105,6 +127,15 @@ func InterserviceCommunicationError() api.Response {
 	}
 }
 
+func InterserviceCommunicationErrorRaw() (int, []byte) {
+	result, _ := json.Marshal(api.ErrorResponse{
+		Code:  http.StatusInternalServerError,
+		Error: "interservice communication error",
+	})
+
+	return http.StatusInternalServerError, result
+}
+
 func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
 	return context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
 }
@@ -117,4 +148,12 @@ func GetIDParam(c *gin.Context) (int, error) {
 
 	id, err := strconv.Atoi(idStr)
 	return id, err
+}
+
+func SearchLikeString(str string) string {
+	result := strings.Replace(str, " ", "%", -1)
+	result = "%" + result
+	result += "%"
+	result = strings.ToLower(result)
+	return result
 }

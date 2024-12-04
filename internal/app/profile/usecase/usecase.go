@@ -31,7 +31,7 @@ func (p *profileUseCase) GetUserProfile(id int) api.Response {
 	user, err := p.repo.GetUserProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())
-		return &api.UserProfileResponse{
+		return &api.ErrorResponse{
 			Code:  http.StatusNotFound,
 			Error: "unable to find such profile",
 		}
@@ -47,10 +47,10 @@ func (p *profileUseCase) GetArtistProfile(id int) api.Response {
 	ctx, cancel := utils.DeadlineContext(2)
 	defer cancel()
 
-	albums, err := p.repo.GetArtistProfile(ctx, id)
+	artist, albums, err := p.repo.GetArtistProfile(ctx, id)
 	if err != nil {
 		log.Print(err.Error())
-		return &api.ArtistProfileResponse{
+		return &api.ErrorResponse{
 			Code:  http.StatusNotFound,
 			Error: "unable to find such artist",
 		}
@@ -58,6 +58,7 @@ func (p *profileUseCase) GetArtistProfile(id int) api.Response {
 
 	return &api.ArtistProfileResponse{
 		Code:   http.StatusOK,
+		Artist: artist,
 		Albums: albums,
 	}
 }

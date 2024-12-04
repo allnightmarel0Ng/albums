@@ -27,20 +27,9 @@ func (a *AuthenticationResponse) GetCode() int {
 	return a.Code
 }
 
-type AlbumsResponse struct {
-	Code  int           `json:"-"`
-	Error string        `json:"error,omitempty"`
-	Data  []model.Album `json:"data,omitempty"`
-}
-
-func (a *AlbumsResponse) GetCode() int {
-	return a.Code
-}
-
 type UserProfileResponse struct {
-	Code  int        `json:"-"`
-	Error string     `json:"error,omitempty"`
-	User  model.User `json:"user,omitempty"`
+	Code int        `json:"-"`
+	User model.User `json:"user,omitempty"`
 }
 
 func (u *UserProfileResponse) GetCode() int {
@@ -49,7 +38,7 @@ func (u *UserProfileResponse) GetCode() int {
 
 type ArtistProfileResponse struct {
 	Code   int           `json:"-"`
-	Error  string        `json:"error,omitempty"`
+	Artist model.Artist  `json:"artist,omitempty"`
 	Albums []model.Album `json:"albums,omitempty"`
 }
 
@@ -68,18 +57,8 @@ func (j *AuthorizationResponse) GetCode() int {
 	return j.Code
 }
 
-type OrderActionResponse struct {
-	Code  int    `json:"-"`
-	Error string `json:"error,omitempty"`
-}
-
-func (o *OrderActionResponse) GetCode() int {
-	return o.Code
-}
-
 type UserOrdersResponse struct {
 	Code   int           `json:"-"`
-	Error  string        `json:"error,omitempty"`
 	Orders []model.Order `json:"orders,omitempty"`
 }
 
@@ -95,4 +74,14 @@ type UnpaidUserOrderResponse struct {
 
 func (u *UnpaidUserOrderResponse) GetCode() int {
 	return u.Code
+}
+
+type SearchEngineResponse struct {
+	Code    int            `json:"-"`
+	Artists []model.Artist `json:"artists,omitempty"`
+	Albums  []model.Album  `json:"albums,omitempty"`
+}
+
+func (s *SearchEngineResponse) GetCode() int {
+	return s.Code
 }

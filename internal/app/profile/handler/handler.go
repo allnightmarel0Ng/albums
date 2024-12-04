@@ -27,7 +27,7 @@ func NewProfileHandler(useCase usecase.ProfileUseCase) ProfileHandler {
 func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
 	id, err := utils.GetIDParam(c)
 	if err != nil {
-		utils.Send(c, &api.ArtistProfileResponse{
+		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
 			Error: "unable to parse id param: " + err.Error(),
 		})
@@ -40,7 +40,7 @@ func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
 func (p *profileHandler) HandleUserProfile(c *gin.Context) {
 	id, err := utils.GetIDParam(c)
 	if err != nil {
-		utils.Send(c, &api.ArtistProfileResponse{
+		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
 			Error: "unable to parse id param: " + err.Error(),
 		})

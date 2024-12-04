@@ -65,7 +65,7 @@ BEGIN
 
     SELECT id INTO d_order_item_id
     FROM public.order_items
-    WHERE order_id = d_order_id;
+    WHERE order_id = d_order_id AND album_id = p_album_id;
 
     IF d_order_item_id IS NULL THEN
         ROLLBACK;

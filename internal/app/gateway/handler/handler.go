@@ -12,7 +12,8 @@ import (
 
 type GatewayHandler interface {
 	HandleLogin(c *gin.Context)
-	// HandleMainPage(c *gin.Context)
+	HandleMainPage(c *gin.Context)
+	HandleSearch(c *gin.Context)
 	HandleUserProfile(c *gin.Context)
 	HandleArtistProfile(c *gin.Context)
 	HandleOrderAdd(c *gin.Context)
@@ -33,21 +34,19 @@ func NewGatewayHandler(useCase usecase.GatewayUseCase) GatewayHandler {
 }
 
 func (g *gatewayHandler) HandleLogin(c *gin.Context) {
-	utils.Send(c, g.useCase.Authentication(c.GetHeader("Authorization")))
+	code, raw := g.useCase.Authentication(c.GetHeader("Authorization"))
+	utils.SendRaw(c, code, raw)
 }
 
-// func (g *gatewayHandler) HandleMainPage(c *gin.Context) {
-// 	authHeader := c.GetHeader("Authorization")
+func (g *gatewayHandler) HandleMainPage(c *gin.Context) {
+	code, raw := g.useCase.MainPage(c.Request.Body)
+	utils.SendRaw(c, code, raw)
+}
 
-// 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-// 		utils.Send(c, &api.AuthorizationResponse{
-// 			Code:  http.StatusBadRequest,
-// 			Error: "wrong auth token",
-// 		})
-// 	}
-
-// 	utils.Send(c, g.useCase.MainPage(authHeader[len("Bearer "):]))
-// }
+func (g *gatewayHandler) HandleSearch(c *gin.Context) {
+	code, raw := g.useCase.Search(c.Request.Body)
+	utils.SendRaw(c, code, raw)
+}
 
 func (g *gatewayHandler) HandleUserProfile(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
@@ -60,7 +59,8 @@ func (g *gatewayHandler) HandleUserProfile(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, g.useCase.UserProfile(authHeader))
+	code, raw := g.useCase.UserProfile(authHeader)
+	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleArtistProfile(c *gin.Context) {
@@ -73,7 +73,8 @@ func (g *gatewayHandler) HandleArtistProfile(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, g.useCase.ArtistProfile(id))
+	code, raw := g.useCase.ArtistProfile(id)
+	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleOrderAdd(c *gin.Context) {
@@ -84,7 +85,7 @@ func (g *gatewayHandler) HandleOrderRemove(c *gin.Context) {
 	handleOrderAction(c, g.useCase.RemoveFromOrder)
 }
 
-func handleOrderAction(c *gin.Context, callback func(int, string) api.Response) {
+func handleOrderAction(c *gin.Context, callback func(int, string) (int, []byte)) {
 	authHeader := c.GetHeader("Authorization")
 
 	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -104,7 +105,8 @@ func handleOrderAction(c *gin.Context, callback func(int, string) api.Response) 
 		return
 	}
 
-	utils.Send(c, callback(id, authHeader))
+	code, raw := callback(id, authHeader)
+	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleOrders(c *gin.Context) {
@@ -118,7 +120,8 @@ func (g *gatewayHandler) HandleOrders(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, g.useCase.UserOrders(authHeader))
+	code, raw := g.useCase.UserOrders(authHeader)
+	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleDeposit(c *gin.Context) {

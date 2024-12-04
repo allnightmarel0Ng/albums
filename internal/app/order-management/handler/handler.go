@@ -1,9 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 
@@ -34,7 +32,7 @@ func NewOrderManagementHandler(useCase usecase.OrderManagementUseCase) OrderMana
 func (o *orderManagementHandler) HandleAdd(c *gin.Context) {
 	request, err := parseRequestBody(c)
 	if err != nil {
-		utils.Send(c, &api.OrderActionResponse{
+		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
@@ -47,20 +45,25 @@ func (o *orderManagementHandler) HandleAdd(c *gin.Context) {
 func (o *orderManagementHandler) HandleRemove(c *gin.Context) {
 	request, err := parseRequestBody(c)
 	if err != nil {
-		utils.Send(c, &api.OrderActionResponse{
+		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
 			Error: err.Error(),
 		})
 		return
 	}
 
-	o.useCase.RemoveAlbumFromUserOrder(request)
+	response := o.useCase.RemoveAlbumFromUserOrder(request)
+	if response != nil {
+		utils.Send(c, response)
+	}
+
+	c.String(http.StatusOK, "")
 }
 
 func (o *orderManagementHandler) HandleOrders(c *gin.Context) {
 	id, err := utils.GetIDParam(c)
 	if err != nil {
-		utils.Send(c, &api.UserOrdersResponse{
+		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
 			Error: "invalid id parameter",
 		})
@@ -81,15 +84,8 @@ func (o *orderManagementHandler) HandleOrders(c *gin.Context) {
 }
 
 func parseRequestBody(c *gin.Context) (api.OrderActionRequest, error) {
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		return api.OrderActionRequest{}, errInvalidRequestBody
-	}
-	defer c.Request.Body.Close()
-
 	var request api.OrderActionRequest
-	err = json.Unmarshal(body, &request)
-	if err != nil {
+	if err := c.ShouldBindJSON(&request); err != nil {
 		return api.OrderActionRequest{}, errInvalidRequestBody
 	}
 

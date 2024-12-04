@@ -28,18 +28,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  
-  # init-kafka:
-  #   image: confluentinc/cp-kafka:6.1.1
-  #   depends_on:
-  #     - kafka
-  #   entrypoint: [ "/bin/sh", "-c" ]
-  #   command: |
-  #     "
-  #     kafka-topics --bootstrap-server kafka:9092 --list
-  #     kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic money-operations --replication-factor 1 --partitions 5
-  #     kafka-topics --bootstrap-server kafka:9092 --list
-  #     "
 
   redis:
     image: redis:latest
@@ -153,6 +141,22 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+  
+  search-engine:
+    container_name: search-engine
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: search-engine
+        SERVICE_PORT: ${SEARCH_ENGINE_PORT}
+        EXPOSE_PORT: "true"
+    ports:
+      - "${SEARCH_ENGINE_PORT}:${SEARCH_ENGINE_PORT}"
+    depends_on:
+      postgres: 
+        condition: service_healthy
+    init: true
 
   gateway:
     container_name: gateway
@@ -166,10 +170,8 @@ services:
     ports:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     depends_on:
-      - authorization
-      - postgres
-      - order-management
-      - money-operations
+      kafka:
+        condition: service_healthy
     init: true
     
 volumes:

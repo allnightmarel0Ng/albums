@@ -9,18 +9,20 @@ import (
 
 type ProfileRepository interface {
 	GetUserProfile(ctx context.Context, id int) (model.User, error)
-	GetArtistProfile(ctx context.Context, id int) ([]model.Album, error)
+	GetArtistProfile(ctx context.Context, id int) (model.Artist, []model.Album, error)
 }
 
 type profileRepository struct {
-	users  repository.UserRepository
-	albums repository.AlbumRepository
+	users   repository.UserRepository
+	albums  repository.AlbumRepository
+	artists repository.ArtistRepository
 }
 
 func NewProfileRepository(users repository.UserRepository, albums repository.AlbumRepository, artists repository.ArtistRepository) ProfileRepository {
 	return &profileRepository{
-		users:  users,
-		albums: albums,
+		users:   users,
+		albums:  albums,
+		artists: artists,
 	}
 }
 
@@ -43,11 +45,25 @@ func (p *profileRepository) GetUserProfile(ctx context.Context, id int) (model.U
 	}
 }
 
-func (p *profileRepository) GetArtistProfile(ctx context.Context, id int) ([]model.Album, error) {
+func (p *profileRepository) GetArtistProfile(ctx context.Context, id int) (model.Artist, []model.Album, error) {
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return model.Artist{}, nil, ctx.Err()
 	default:
-		return p.albums.GetArtistsAlbums(ctx, id)
+		albums, err := p.albums.GetArtistsAlbums(ctx, id)
+		if err != nil {
+			return model.Artist{}, nil, err
+		}
+
+		artist, err := p.artists.GetArtistByID(ctx, id)
+		if err != nil {
+			return model.Artist{}, nil, err
+		}
+
+		for i := 0; i < len(albums); i++ {
+			albums[i].Author = model.Artist{}
+		}
+
+		return artist, albums, nil
 	}
 }

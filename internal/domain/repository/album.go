@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"strings"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
@@ -44,7 +43,7 @@ const (
 				FROM public.tracks AS t
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
-				WHERE a.name LIKE $1;`
+				WHERE a.name ILIKE $1;`
 
 	selectArtistsAlbumsSQL =
 	/* sql */ `SELECT
@@ -63,12 +62,32 @@ const (
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
 				WHERE ar.id = $1;`
+
+	selectRandomNAlbumsSQL =
+	/* sql */ `SELECT 
+					a.id,
+					a.name,
+					ar.id,
+					ar.name,
+					ar.genre,
+					ar.image_url,
+					a.image_url,
+					a.price,
+					t.id,
+					t.name,
+					t.number
+				FROM public.tracks AS t
+				LEFT JOIN public.albums AS a ON t.album_id = a.id
+				JOIN public.artists AS ar ON a.artist_id = ar.id
+				ORDER BY RANDOM()
+				LIMIT $1;`
 )
 
 type AlbumRepository interface {
 	GetUsersPurchasedAlbums(ctx context.Context, userID int) ([]model.Album, error)
-	GetAllAlbumsLike(ctx context.Context, name string) ([]model.Album, error)
+	GetAlbumsLikeName(ctx context.Context, name string) ([]model.Album, error)
 	GetArtistsAlbums(ctx context.Context, artistID int) ([]model.Album, error)
+	GetRandomNAlbums(ctx context.Context, count uint) ([]model.Album, error)
 }
 
 type albumRepository struct {
@@ -126,20 +145,8 @@ func (a *albumRepository) GetUsersPurchasedAlbums(ctx context.Context, userID in
 	return albumsFromRows(rows)
 }
 
-func (a *albumRepository) GetAllAlbumsLike(ctx context.Context, name string) ([]model.Album, error) {
-	tokens := strings.Split(name, " ")
-	var sb strings.Builder
-
-	sb.WriteRune('%')
-	for _, token := range tokens {
-		sb.WriteString(token)
-	}
-
-	if len(tokens) > 0 {
-		sb.WriteRune('%')
-	}
-
-	rows, err := a.db.Query(ctx, selectAlbumsLikeNameSQL, sb.String())
+func (a *albumRepository) GetAlbumsLikeName(ctx context.Context, name string) ([]model.Album, error) {
+	rows, err := a.db.Query(ctx, selectAlbumsLikeNameSQL, name)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +157,15 @@ func (a *albumRepository) GetAllAlbumsLike(ctx context.Context, name string) ([]
 
 func (a *albumRepository) GetArtistsAlbums(ctx context.Context, artistID int) ([]model.Album, error) {
 	rows, err := a.db.Query(ctx, selectArtistsAlbumsSQL, artistID)
+	if err != nil {
+		return nil, err
+	}
+
+	return albumsFromRows(rows)
+}
+
+func (a *albumRepository) GetRandomNAlbums(ctx context.Context, count uint) ([]model.Album, error) {
+	rows, err := a.db.Query(ctx, selectRandomNAlbumsSQL, count)
 	if err != nil {
 		return nil, err
 	}

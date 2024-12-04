@@ -34,21 +34,19 @@ func (o *orderManagementUseCase) AddAlbumToUserOrder(request api.OrderActionRequ
 	if err != nil {
 		switch err {
 		case context.DeadlineExceeded:
-			return &api.OrderActionResponse{
+			return &api.ErrorResponse{
 				Code:  http.StatusInternalServerError,
 				Error: "database fail",
 			}
 		default:
-			return &api.OrderActionResponse{
+			return &api.ErrorResponse{
 				Code:  http.StatusBadRequest,
 				Error: "order creation error: album not found",
 			}
 		}
 	}
 
-	return &api.OrderActionResponse{
-		Code: http.StatusOK,
-	}
+	return nil
 }
 
 func (o *orderManagementUseCase) RemoveAlbumFromUserOrder(request api.OrderActionRequest) api.Response {
@@ -59,21 +57,19 @@ func (o *orderManagementUseCase) RemoveAlbumFromUserOrder(request api.OrderActio
 	if err != nil {
 		switch err {
 		case context.DeadlineExceeded:
-			return &api.OrderActionResponse{
+			return &api.ErrorResponse{
 				Code:  http.StatusInternalServerError,
 				Error: "database fail",
 			}
 		default:
-			return &api.OrderActionResponse{
+			return &api.ErrorResponse{
 				Code:  http.StatusBadRequest,
 				Error: "order deletion error: album not found",
 			}
 		}
 	}
 
-	return &api.OrderActionResponse{
-		Code: http.StatusOK,
-	}
+	return nil
 }
 
 func (o *orderManagementUseCase) UserOrder(userID int, unpaidOnly bool) api.Response {
@@ -83,7 +79,7 @@ func (o *orderManagementUseCase) UserOrder(userID int, unpaidOnly bool) api.Resp
 	result, err := o.repo.UserOrder(ctx, userID, unpaidOnly)
 	if err != nil {
 		log.Print(err.Error())
-		return &api.UserOrdersResponse{
+		return &api.ErrorResponse{
 			Code:  http.StatusInternalServerError,
 			Error: "error retrieving orders from database",
 		}
