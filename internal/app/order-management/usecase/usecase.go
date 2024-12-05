@@ -34,6 +34,7 @@ func (o *orderManagementUseCase) AddAlbumToUserOrder(request api.OrderActionRequ
 	if err != nil {
 		switch err {
 		case context.DeadlineExceeded:
+		case repository.ErrDatabaseCommunication:
 			return &api.ErrorResponse{
 				Code:  http.StatusInternalServerError,
 				Error: "database fail",
@@ -57,6 +58,7 @@ func (o *orderManagementUseCase) RemoveAlbumFromUserOrder(request api.OrderActio
 	if err != nil {
 		switch err {
 		case context.DeadlineExceeded:
+		case repository.ErrDatabaseCommunication:
 			return &api.ErrorResponse{
 				Code:  http.StatusInternalServerError,
 				Error: "database fail",

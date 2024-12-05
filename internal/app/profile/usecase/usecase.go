@@ -100,7 +100,7 @@ func (p *profileUseCase) GetAlbumProfile(id int) api.Response {
 	}
 
 	return &api.AlbumProfileResponse{
-		Code: http.StatusOK,
+		Code:  http.StatusOK,
 		Album: album,
 	}
 }
