@@ -17,6 +17,7 @@ type AuthorizationUseCase interface {
 	Authenticate(b64 string) api.Response
 	Authorize(jsonWebToken string) api.Response
 	Logout(jsonWebToken string) api.Response
+	Register(request api.RegistrationRequest) api.Response
 }
 
 type authorizationUseCase struct {
@@ -131,7 +132,35 @@ func (a *authorizationUseCase) Logout(jsonWebToken string) api.Response {
 		}
 	}
 
-	return &api.ErrorResponse{
-		Code: http.StatusOK,
+	return nil
+}
+
+func (a *authorizationUseCase) Register(request api.RegistrationRequest) api.Response {
+	if len(request.Password) > 72 {
+		return &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "password is too long",
+		}
 	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(request.Password), -1)
+	if err != nil {
+		return &api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "unable to hash password",
+		}
+	}
+
+	ctx, cancel := utils.DeadlineContext(5)
+	defer cancel()
+
+	err = a.repo.AddNewUser(ctx, request.Email, string(hashed), *request.IsAdmin, request.Nickname, request.ImageURL)
+	if err != nil {
+		return &api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "database communication error",
+		}
+	}
+
+	return nil
 }

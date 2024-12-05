@@ -17,6 +17,7 @@ var (
 
 type AuthorizationRepository interface {
 	GetIDPasswordHash(ctx context.Context, email string) (int, string, bool, error)
+	AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error
 	AddJWT(ctx context.Context, jwt string, expirationSeconds int) error
 	FindJWT(ctx context.Context, jwt string) error
 	DelJWT(ctx context.Context, jwt string) error
@@ -40,6 +41,15 @@ func (a *authorizationRepository) GetIDPasswordHash(ctx context.Context, email s
 		return 0, "", false, ctx.Err()
 	default:
 		return a.users.GetIDPasswordHash(ctx, email)
+	}
+}
+
+func (a *authorizationRepository) AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		return a.users.AddNewUser(ctx, email, password_hash, isAdmin, nickname, imageURL)
 	}
 }
 

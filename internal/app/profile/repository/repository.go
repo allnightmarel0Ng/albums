@@ -10,6 +10,7 @@ import (
 type ProfileRepository interface {
 	GetUserProfile(ctx context.Context, id int) (model.User, []model.Album, error)
 	GetArtistProfile(ctx context.Context, id int) (model.Artist, []model.Album, error)
+	GetAlbumProfile(ctx context.Context, id int) (model.Album, error)
 }
 
 type profileRepository struct {
@@ -61,9 +62,18 @@ func (p *profileRepository) GetArtistProfile(ctx context.Context, id int) (model
 		}
 
 		for i := 0; i < len(albums); i++ {
-			albums[i].Author = model.Artist{}
+			albums[i].Author = nil
 		}
 
 		return artist, albums, nil
+	}
+}
+
+func (p *profileRepository) GetAlbumProfile(ctx context.Context, id int) (model.Album, error) {
+	select {
+	case <-ctx.Done():
+		return model.Album{}, ctx.Err()
+	default:
+		return p.albums.GetAlbumByID(ctx, id)
 	}
 }

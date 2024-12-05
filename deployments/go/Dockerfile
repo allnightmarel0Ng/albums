@@ -23,8 +23,12 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 COPY --from=builder /app/.env .
-    
-RUN apk --no-cache add postgresql-client
+
+ARG PG_DUMP
+
+RUN if [ -n "$PG_DUMP" ]; then \
+    apk --no-cache add postgresql-client; \
+    fi
 
 ARG SERVICE_PORT
 ARG EXPOSE_PORT

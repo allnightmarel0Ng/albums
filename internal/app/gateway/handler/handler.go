@@ -16,15 +16,23 @@ import (
 
 type GatewayHandler interface {
 	HandleLogin(c *gin.Context)
+	HandleLogout(c *gin.Context)
+	HandleRegistration(c *gin.Context)
+
 	HandleMainPage(c *gin.Context)
 	HandleSearch(c *gin.Context)
+
 	HandleUserProfile(c *gin.Context)
 	HandleArtistProfile(c *gin.Context)
+	HandleAlbumProfile(c *gin.Context)
+
 	HandleOrderAdd(c *gin.Context)
 	HandleOrderRemove(c *gin.Context)
 	HandleOrders(c *gin.Context)
+
 	HandleDeposit(c *gin.Context)
 	HandleBuy(c *gin.Context)
+
 	HandleLogs(c *gin.Context)
 	HandleDelete(c *gin.Context)
 	HandleSaveDump(c *gin.Context)
@@ -46,6 +54,16 @@ func (g *gatewayHandler) HandleLogin(c *gin.Context) {
 	utils.SendRaw(c, code, raw)
 }
 
+func (g *gatewayHandler) HandleLogout(c *gin.Context) {
+	code, raw := g.useCase.Logout(c.GetHeader("Authorization"))
+	utils.SendRaw(c, code, raw)
+}
+
+func (g *gatewayHandler) HandleRegistration(c *gin.Context) {
+	code, raw := g.useCase.Register(c.Request.Body)
+	utils.SendRaw(c, code, raw)
+}
+
 func (g *gatewayHandler) HandleMainPage(c *gin.Context) {
 	code, raw := g.useCase.MainPage(c.Request.Body)
 	utils.SendRaw(c, code, raw)
@@ -57,32 +75,16 @@ func (g *gatewayHandler) HandleSearch(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleUserProfile(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
-	code, raw := g.useCase.UserProfile(authHeader)
+	code, raw := g.useCase.UserProfile(c.GetHeader("Authorization"))
 	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleArtistProfile(c *gin.Context) {
-	id, err := utils.GetParam[int](c, "id")
-	if err != nil {
-		utils.Send(c, &api.ErrorResponse{
-			Code:  http.StatusBadRequest,
-			Error: "invalid id parameter",
-		})
-		return
-	}
+	handleProfiles(c, g.useCase.ArtistProfile)
+}
 
-	code, raw := g.useCase.ArtistProfile(id)
-	utils.SendRaw(c, code, raw)
+func (g *gatewayHandler) HandleAlbumProfile(c *gin.Context) {
+	handleProfiles(c, g.useCase.AlbumProfile)
 }
 
 func (g *gatewayHandler) HandleOrderAdd(c *gin.Context) {
@@ -94,31 +96,11 @@ func (g *gatewayHandler) HandleOrderRemove(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleOrders(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
-	code, raw := g.useCase.UserOrders(authHeader)
+	code, raw := g.useCase.UserOrders(c.GetHeader("Authorization"))
 	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleDeposit(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
 	var request api.DepositRequest
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -129,7 +111,7 @@ func (g *gatewayHandler) HandleDeposit(c *gin.Context) {
 		return
 	}
 
-	response := g.useCase.Deposit(authHeader, request.Money)
+	response := g.useCase.Deposit(c.GetHeader("Authorization"), request.Money)
 	if response != nil {
 		utils.Send(c, response)
 		return
@@ -139,17 +121,7 @@ func (g *gatewayHandler) HandleDeposit(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleBuy(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
-	response := g.useCase.Buy(authHeader)
+	response := g.useCase.Buy(c.GetHeader("Authorization"))
 	if response != nil {
 		utils.Send(c, response)
 		return
@@ -159,53 +131,23 @@ func (g *gatewayHandler) HandleBuy(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleLogs(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
 	params := c.Param("id")
 	query := c.Request.URL.RawQuery
 	if query != "" {
 		params += "?" + query
 	}
 
-	code, raw := g.useCase.Logs(authHeader, params)
+	code, raw := g.useCase.Logs(c.GetHeader("Authorization"), params)
 	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleDelete(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
-	code, raw := g.useCase.DeleteAlbum(authHeader, c.Param("id"))
+	code, raw := g.useCase.DeleteAlbum(c.GetHeader("Authorization"), c.Param("id"))
 	utils.SendRaw(c, code, raw)
 }
 
 func (g *gatewayHandler) HandleSaveDump(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
-	code, dump := g.useCase.SaveDump(authHeader)
+	code, dump := g.useCase.SaveDump(c.GetHeader("Authorization"))
 	if code != http.StatusOK {
 		utils.SendRaw(c, code, dump)
 		return
@@ -219,13 +161,9 @@ func (g *gatewayHandler) HandleSaveDump(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleLoadDump(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
+	adminAuthorizationCode, raw := g.useCase.AuthorizeAdmin(c.GetHeader("Authorization"))
+	if adminAuthorizationCode != http.StatusOK {
+		utils.SendRaw(c, adminAuthorizationCode, raw)
 		return
 	}
 
@@ -259,7 +197,7 @@ func (g *gatewayHandler) HandleLoadDump(c *gin.Context) {
 		return
 	}
 
-	code, raw := g.useCase.LoadDump(authHeader, tempFile.Name())
+	code, raw := g.useCase.LoadDump(c.GetHeader("Authorization"), tempFile.Name())
 	if code != http.StatusOK {
 		utils.SendRaw(c, code, raw)
 		return
@@ -269,16 +207,6 @@ func (g *gatewayHandler) HandleLoadDump(c *gin.Context) {
 }
 
 func handleOrderAction(c *gin.Context, callback func(string, int) (int, []byte)) {
-	authHeader := c.GetHeader("Authorization")
-
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Send(c, &api.AuthorizationResponse{
-			Code:  http.StatusBadRequest,
-			Error: "wrong auth token",
-		})
-		return
-	}
-
 	id, err := utils.GetParam[int](c, "id")
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
@@ -288,6 +216,12 @@ func handleOrderAction(c *gin.Context, callback func(string, int) (int, []byte))
 		return
 	}
 
-	code, raw := callback(authHeader, id)
+	code, raw := callback(c.GetHeader("Authorization"), id)
+	utils.SendRaw(c, code, raw)
+}
+
+func handleProfiles(c *gin.Context, callback func(string) (int, []byte)) {
+	id := c.Param("id")
+	code, raw := callback(id)
 	utils.SendRaw(c, code, raw)
 }

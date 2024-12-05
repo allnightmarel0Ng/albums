@@ -29,7 +29,7 @@ func (a *AuthenticationResponse) GetCode() int {
 
 type UserProfileResponse struct {
 	Code      int           `json:"-"`
-	User      model.User    `json:"user,omitempty"`
+	User      model.User    `json:"user"`
 	Purchased []model.Album `json:"purchasedAlbums,omitempty"`
 }
 
@@ -39,11 +39,20 @@ func (u *UserProfileResponse) GetCode() int {
 
 type ArtistProfileResponse struct {
 	Code   int           `json:"-"`
-	Artist model.Artist  `json:"artist,omitempty"`
+	Artist model.Artist  `json:"artist"`
 	Albums []model.Album `json:"albums,omitempty"`
 }
 
 func (a *ArtistProfileResponse) GetCode() int {
+	return a.Code
+}
+
+type AlbumProfileResponse struct {
+	Code  int         `json:"-"`
+	Album model.Album `json:"album"`
+}
+
+func (a *AlbumProfileResponse) GetCode() int {
 	return a.Code
 }
 

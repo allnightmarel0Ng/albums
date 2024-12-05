@@ -33,6 +33,10 @@ const (
 
 	callPayForOrderSQL =
 	/* sql */ `CALL pay_for_order($1, $2);`
+
+	insertNewUserSQL =
+	/* sql */ `INSERT INTO public.users (email, password_hash, is_admin, nickname, image_url)
+				VALUES ($1, $2, $3, $4, $5);`
 )
 
 type UserRepository interface {
@@ -40,6 +44,7 @@ type UserRepository interface {
 	GetUser(ctx context.Context, id int) (model.User, error)
 	ChangeBalance(ctx context.Context, id int, diff uint) error
 	PayForOrder(ctx context.Context, userID int, orderID int) error
+	AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error
 }
 
 type userRepository struct {
@@ -80,4 +85,8 @@ func (u *userRepository) ChangeBalance(ctx context.Context, id int, diff uint) e
 
 func (u *userRepository) PayForOrder(ctx context.Context, userID int, orderID int) error {
 	return u.db.Exec(ctx, callPayForOrderSQL, userID, orderID)
+}
+
+func (u *userRepository) AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error {
+	return u.db.Exec(ctx, insertNewUserSQL, email, password_hash, isAdmin, nickname, imageURL)
 }

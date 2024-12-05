@@ -84,7 +84,7 @@ func (l *logsRepository) GetLogs(ctx context.Context, offset, limit uint) ([]mod
 			return nil, err
 		}
 
-		album.Author = model.Artist{
+		album.Author = &model.Artist{
 			Name:     artistName,
 			Genre:    artistGenre,
 			ImageURL: artistImageURL,

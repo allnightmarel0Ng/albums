@@ -47,6 +47,7 @@ func main() {
 	router.GET("/authorize", handler.HandleAuthorization)
 	router.GET("/authenticate", handler.HandleAuthentication)
 	router.POST("/logout", handler.HandleLogout)
+	router.POST("/registration", handler.HandleRegistration)
 
 	log.Fatal(http.ListenAndServe(":"+conf.AuthorizationPort, router))
 }

@@ -38,6 +38,7 @@ func main() {
 	router := gin.Default()
 	router.GET("/users/:id", handler.HandleUserProfile)
 	router.GET("/artists/:id", handler.HandleArtistProfile)
+	router.GET("/albums/:id", handler.HandleAlbumProfile)
 
 	log.Fatal(http.ListenAndServe(":"+conf.ProfilePort, router))
 }

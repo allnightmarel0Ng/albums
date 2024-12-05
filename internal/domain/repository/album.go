@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
@@ -85,6 +86,24 @@ const (
 	deleteAlbumSQL =
 	/* sql */ `DELETE FROM public.albums
 				WHERE id = $1;`
+
+	selectAlbumByIdSQL =
+	/* sql */ `SELECT
+					a.id,
+					a.name,
+					ar.id,
+					ar.name,
+					ar.genre,
+					ar.image_url,
+					a.image_url,
+					a.price,
+					t.id,
+					t.name,
+					t.number
+				FROM public.tracks AS t
+				LEFT JOIN public.albums AS a ON t.album_id = a.id
+				JOIN public.artists AS ar ON a.artist_id = ar.id
+				WHERE a.id = $1;`
 )
 
 type AlbumRepository interface {
@@ -93,6 +112,7 @@ type AlbumRepository interface {
 	GetArtistsAlbums(ctx context.Context, artistID int) ([]model.Album, error)
 	GetRandomNAlbums(ctx context.Context, count uint) ([]model.Album, error)
 	DeleteAlbum(ctx context.Context, albumID int) error
+	GetAlbumByID(ctx context.Context, albumID int) (model.Album, error)
 }
 
 type albumRepository struct {
@@ -110,16 +130,19 @@ func albumsFromRows(rows postgres.Rows) ([]model.Album, error) {
 
 	for rows.Next() {
 		var (
-			album model.Album
-			track model.Track
+			album  model.Album
+			track  model.Track
+			author model.Artist
 		)
 
-		err := rows.Scan(&album.ID, &album.Name, &album.Author.ID,
-			&album.Author.Name, &album.Author.Genre, &album.Author.ImageURL, &album.ImageURL, &album.Price,
+		err := rows.Scan(&album.ID, &album.Name, &author.ID,
+			&author.Name, &author.Genre, &author.ImageURL, &album.ImageURL, &album.Price,
 			&track.ID, &track.Name, &track.Number)
 		if err != nil {
 			return nil, err
 		}
+
+		album.Author = &author
 
 		_, ok := albumsMap[album.ID]
 		if !ok {
@@ -178,6 +201,25 @@ func (a *albumRepository) GetRandomNAlbums(ctx context.Context, count uint) ([]m
 	return albumsFromRows(rows)
 }
 
-func (l *albumRepository) DeleteAlbum(ctx context.Context, albumID int) error {
-	return l.db.Exec(ctx, deleteAlbumSQL, albumID)
+func (a *albumRepository) DeleteAlbum(ctx context.Context, albumID int) error {
+	return a.db.Exec(ctx, deleteAlbumSQL, albumID)
+}
+
+func (a *albumRepository) GetAlbumByID(ctx context.Context, albumID int) (model.Album, error) {
+	rows, err := a.db.Query(ctx, selectAlbumByIdSQL, albumID)
+	if err != nil {
+		return model.Album{}, err
+	}
+	defer rows.Close()
+
+	result, err := albumsFromRows(rows)
+	if err != nil {
+		return model.Album{}, err
+	}
+
+	if len(result) != 1 {
+		return model.Album{}, fmt.Errorf("album not found")
+	}
+
+	return result[0], nil
 }

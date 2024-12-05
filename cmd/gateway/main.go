@@ -28,16 +28,25 @@ func main() {
 	handler := handler.NewGatewayHandler(useCase)
 
 	router := gin.Default()
+
 	router.GET("/login", handler.HandleLogin)
+	router.POST("/logout", handler.HandleLogout)
+	router.POST("/registration", handler.HandleRegistration)
+
 	router.POST("/", handler.HandleMainPage)
-	router.GET("/artists/:id", handler.HandleArtistProfile)
+	router.POST("/search", handler.HandleSearch)
+
 	router.GET("/profile", handler.HandleUserProfile)
+	router.GET("/artists/:id", handler.HandleArtistProfile)
+	router.GET("/albums/:id", handler.HandleAlbumProfile)
+
 	router.POST("/add/:id", handler.HandleOrderAdd)
 	router.POST("/remove/:id", handler.HandleOrderRemove)
 	router.GET("/orders", handler.HandleOrders)
+
 	router.POST("/deposit", handler.HandleDeposit)
 	router.POST("/buy", handler.HandleBuy)
-	router.POST("/search", handler.HandleSearch)
+
 	router.GET("/admin-panel/logs/:pageNumber", handler.HandleLogs)
 	router.DELETE("/admin-panel/delete/:id", handler.HandleDelete)
 	router.GET("/admin-panel/save-dump", handler.HandleSaveDump)

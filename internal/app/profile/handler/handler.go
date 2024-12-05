@@ -12,6 +12,7 @@ import (
 type ProfileHandler interface {
 	HandleArtistProfile(c *gin.Context)
 	HandleUserProfile(c *gin.Context)
+	HandleAlbumProfile(c *gin.Context)
 }
 
 type profileHandler struct {
@@ -27,10 +28,7 @@ func NewProfileHandler(useCase usecase.ProfileUseCase) ProfileHandler {
 func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
 	id, err := utils.GetParam[int](c, "id")
 	if err != nil {
-		utils.Send(c, &api.ErrorResponse{
-			Code:  http.StatusBadRequest,
-			Error: "unable to parse id param: " + err.Error(),
-		})
+		sendParsingError(c, err)
 		return
 	}
 
@@ -40,12 +38,26 @@ func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
 func (p *profileHandler) HandleUserProfile(c *gin.Context) {
 	id, err := utils.GetParam[int](c, "id")
 	if err != nil {
-		utils.Send(c, &api.ErrorResponse{
-			Code:  http.StatusBadRequest,
-			Error: "unable to parse id param: " + err.Error(),
-		})
+		sendParsingError(c, err)
 		return
 	}
 
 	utils.Send(c, p.useCase.GetUserProfile(id))
+}
+
+func (p *profileHandler) HandleAlbumProfile(c *gin.Context) {
+	id, err := utils.GetParam[int](c, "id")
+	if err != nil {
+		sendParsingError(c, err)
+		return
+	}
+
+	utils.Send(c, p.useCase.GetAlbumProfile(id))
+}
+
+func sendParsingError(c *gin.Context, err error) {
+	utils.Send(c, &api.ErrorResponse{
+		Code:  http.StatusBadRequest,
+		Error: "unable to parse id param: " + err.Error(),
+	})
 }

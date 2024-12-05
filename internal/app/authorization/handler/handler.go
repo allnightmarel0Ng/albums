@@ -15,6 +15,7 @@ type AuthorizationHandler interface {
 	HandleAuthentication(c *gin.Context)
 	HandleAuthorization(c *gin.Context)
 	HandleLogout(c *gin.Context)
+	HandleRegistration(c *gin.Context)
 }
 
 type authorizationHandler struct {
@@ -64,5 +65,32 @@ func (a *authorizationHandler) HandleLogout(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, a.useCase.Logout(authData[len("Bearer "):]))
+	response := a.useCase.Logout(authData[len("Bearer "):])
+	if response != nil {
+		utils.Send(c, response)
+		return
+	}
+
+	c.String(http.StatusOK, "")
+}
+
+func (a *authorizationHandler) HandleRegistration(c *gin.Context) {
+	var request api.RegistrationRequest
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "invalid request fields",
+		})
+		log.Print(err.Error())
+		return
+	}
+
+	response := a.useCase.Register(request)
+	if response != nil {
+		utils.Send(c, response)
+		return
+	}
+
+	c.String(http.StatusOK, "")
 }

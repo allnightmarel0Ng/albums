@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"log"
+	"context"
 	"net/http"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/profile/repository"
@@ -12,6 +12,7 @@ import (
 type ProfileUseCase interface {
 	GetUserProfile(id int) api.Response
 	GetArtistProfile(id int) api.Response
+	GetAlbumProfile(id int) api.Response
 }
 
 type profileUseCase struct {
@@ -25,15 +26,22 @@ func NewProfileUseCase(repo repository.ProfileRepository) ProfileUseCase {
 }
 
 func (p *profileUseCase) GetUserProfile(id int) api.Response {
-	ctx, cancel := utils.DeadlineContext(2)
+	ctx, cancel := utils.DeadlineContext(5)
 	defer cancel()
 
 	user, purchased, err := p.repo.GetUserProfile(ctx, id)
 	if err != nil {
-		log.Print(err.Error())
-		return &api.ErrorResponse{
-			Code:  http.StatusNotFound,
-			Error: "unable to find such profile",
+		switch err {
+		case context.DeadlineExceeded:
+			return &api.ErrorResponse{
+				Code:  http.StatusInternalServerError,
+				Error: "database communication error",
+			}
+		default:
+			return &api.ErrorResponse{
+				Code:  http.StatusNotFound,
+				Error: "unable to find such profile",
+			}
 		}
 	}
 
@@ -45,15 +53,22 @@ func (p *profileUseCase) GetUserProfile(id int) api.Response {
 }
 
 func (p *profileUseCase) GetArtistProfile(id int) api.Response {
-	ctx, cancel := utils.DeadlineContext(2)
+	ctx, cancel := utils.DeadlineContext(5)
 	defer cancel()
 
 	artist, albums, err := p.repo.GetArtistProfile(ctx, id)
 	if err != nil {
-		log.Print(err.Error())
-		return &api.ErrorResponse{
-			Code:  http.StatusNotFound,
-			Error: "unable to find such artist",
+		switch err {
+		case context.DeadlineExceeded:
+			return &api.ErrorResponse{
+				Code:  http.StatusInternalServerError,
+				Error: "database communication error",
+			}
+		default:
+			return &api.ErrorResponse{
+				Code:  http.StatusNotFound,
+				Error: "unable to find such profile",
+			}
 		}
 	}
 
@@ -61,5 +76,31 @@ func (p *profileUseCase) GetArtistProfile(id int) api.Response {
 		Code:   http.StatusOK,
 		Artist: artist,
 		Albums: albums,
+	}
+}
+
+func (p *profileUseCase) GetAlbumProfile(id int) api.Response {
+	ctx, cancel := utils.DeadlineContext(5)
+	defer cancel()
+
+	album, err := p.repo.GetAlbumProfile(ctx, id)
+	if err != nil {
+		switch err {
+		case context.DeadlineExceeded:
+			return &api.ErrorResponse{
+				Code:  http.StatusInternalServerError,
+				Error: "database communication error",
+			}
+		default:
+			return &api.ErrorResponse{
+				Code:  http.StatusNotFound,
+				Error: "unable to find such profile",
+			}
+		}
+	}
+
+	return &api.AlbumProfileResponse{
+		Code: http.StatusOK,
+		Album: album,
 	}
 }

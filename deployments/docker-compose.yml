@@ -135,7 +135,6 @@ services:
       dockerfile: deployments/go/Dockerfile
       args:
         SERVICE_NAME: money-operations
-        EXPOSE_PORT: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -183,6 +182,7 @@ services:
         SERVICE_NAME: gateway
         SERVICE_PORT: ${GATEWAY_PORT}
         EXPOSE_PORT: "true"
+        PG_DUMP: "true"
     ports:
       - "${GATEWAY_PORT}:${GATEWAY_PORT}"
     depends_on:

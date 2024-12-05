@@ -10,7 +10,7 @@ type Artist struct {
 type Album struct {
 	ID       int     `json:"id"`
 	Name     string  `json:"name"`
-	Author   Artist  `json:"author,omitempty"`
+	Author   *Artist `json:"author,omitempty"`
 	ImageURL string  `json:"imageURL"`
 	Price    float64 `json:"price"`
 	Tracks   []Track `json:"tracks"`

@@ -14,7 +14,7 @@ CREATE TABLE public.users (
     password_hash VARCHAR(70) NOT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     nickname VARCHAR(30) NOT NULL,
-    balance DECIMAL(10, 2) NOT NULL,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
     image_url VARCHAR(255) NOT NULL DEFAULT ''
 );
 

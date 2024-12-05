@@ -16,19 +16,28 @@ import (
 
 type GatewayUseCase interface {
 	Authentication(authHeader string) (int, []byte)
-	MainPage(request io.Reader) (int, []byte)
+	Logout(authHeader string) (int, []byte)
+	Register(body io.Reader) (int, []byte)
+
+	MainPage(body io.Reader) (int, []byte)
 	Search(body io.Reader) (int, []byte)
+
 	UserProfile(jsonWebToken string) (int, []byte)
-	ArtistProfile(id int) (int, []byte)
+	ArtistProfile(params string) (int, []byte)
+	AlbumProfile(params string) (int, []byte)
+
 	AddToOrder(authHeader string, albumID int) (int, []byte)
 	RemoveFromOrder(authHeader string, albumID int) (int, []byte)
 	UserOrders(jsonWebToken string) (int, []byte)
+
 	Deposit(authHeader string, diff uint) api.Response
 	Buy(authHeader string) api.Response
+
 	Logs(authHeader string, params string) (int, []byte)
 	DeleteAlbum(authHeader string, params string) (int, []byte)
 	SaveDump(authHeader string) (int, []byte)
-	LoadDump(authHEader, filePath string) (int, []byte)
+	LoadDump(authHeader, filePath string) (int, []byte)
+	AuthorizeAdmin(authHeader string) (int, []byte)
 }
 
 type gatewayUseCase struct {
@@ -80,6 +89,14 @@ func (g *gatewayUseCase) Authentication(authHeader string) (int, []byte) {
 	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://authorization:%s/authenticate", g.authorizationPort), authHeader, nil)
 }
 
+func (g *gatewayUseCase) Logout(authHeader string) (int, []byte) {
+	return utils.RequestAndParseResponse("POST", fmt.Sprintf("http://authorization:%s/logout", g.authorizationPort), authHeader, nil)
+}
+
+func (g *gatewayUseCase) Register(body io.Reader) (int, []byte) {
+	return utils.RequestAndParseResponse("POST", fmt.Sprintf("http://authorization:%s/registration", g.authorizationPort), "", body)
+}
+
 func (g *gatewayUseCase) UserProfile(authHeader string) (int, []byte) {
 	authorizationResponse := g.authorize(authHeader)
 	if authorizationResponse.GetCode() != http.StatusOK {
@@ -92,8 +109,12 @@ func (g *gatewayUseCase) UserProfile(authHeader string) (int, []byte) {
 	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://profile:%s/users/%d", g.profilePort, claims.ID), "", nil)
 }
 
-func (g *gatewayUseCase) ArtistProfile(id int) (int, []byte) {
-	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://profile:%s/artists/%d", g.profilePort, id), "", nil)
+func (g *gatewayUseCase) ArtistProfile(params string) (int, []byte) {
+	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://profile:%s/artists/%s", g.profilePort, params), "", nil)
+}
+
+func (g *gatewayUseCase) AlbumProfile(params string) (int, []byte) {
+	return utils.RequestAndParseResponse("GET", fmt.Sprintf("http://profile:%s/albums/%s", g.profilePort, params), "", nil)
 }
 
 func (g *gatewayUseCase) AddToOrder(authHeader string, albumID int) (int, []byte) {
@@ -203,7 +224,7 @@ func (g *gatewayUseCase) Search(body io.Reader) (int, []byte) {
 }
 
 func (g *gatewayUseCase) Logs(authHeader string, params string) (int, []byte) {
-	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	adminAuthorizationCode, raw := g.AuthorizeAdmin(authHeader)
 	if adminAuthorizationCode != http.StatusOK {
 		return adminAuthorizationCode, raw
 	}
@@ -212,7 +233,7 @@ func (g *gatewayUseCase) Logs(authHeader string, params string) (int, []byte) {
 }
 
 func (g *gatewayUseCase) DeleteAlbum(authHeader string, params string) (int, []byte) {
-	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	adminAuthorizationCode, raw := g.AuthorizeAdmin(authHeader)
 	if adminAuthorizationCode != http.StatusOK {
 		return adminAuthorizationCode, raw
 	}
@@ -221,7 +242,7 @@ func (g *gatewayUseCase) DeleteAlbum(authHeader string, params string) (int, []b
 }
 
 func (g *gatewayUseCase) SaveDump(authHeader string) (int, []byte) {
-	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
+	adminAuthorizationCode, raw := g.AuthorizeAdmin(authHeader)
 	if adminAuthorizationCode != http.StatusOK {
 		return adminAuthorizationCode, raw
 	}
@@ -242,11 +263,6 @@ func (g *gatewayUseCase) SaveDump(authHeader string) (int, []byte) {
 }
 
 func (g *gatewayUseCase) LoadDump(authHeader, filePath string) (int, []byte) {
-	adminAuthorizationCode, raw := g.authorizeAdmin(authHeader)
-	if adminAuthorizationCode != http.StatusOK {
-		return adminAuthorizationCode, raw
-	}
-
 	cmd := exec.Command("psql", "-U", g.postgresUser, "-h", "postgres", "-p", g.postgresPort, g.postgresDB, "-f", filePath)
 
 	cmd.Env = append(os.Environ(), fmt.Sprintf("PGPASSWORD=%s", g.postgresPassword))
@@ -264,7 +280,7 @@ func (g *gatewayUseCase) LoadDump(authHeader, filePath string) (int, []byte) {
 	return http.StatusOK, output
 }
 
-func (g *gatewayUseCase) authorizeAdmin(authHeader string) (int, []byte) {
+func (g *gatewayUseCase) AuthorizeAdmin(authHeader string) (int, []byte) {
 	authorizationResponse := g.authorize(authHeader)
 	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)

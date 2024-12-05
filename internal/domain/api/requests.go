@@ -24,3 +24,11 @@ type RandomEntitiesRequest struct {
 	ArtistsCount uint `json:"artistsCount" binding:"required"`
 	AlbumsCount  uint `json:"albumsCount" binding:"required"`
 }
+
+type RegistrationRequest struct {
+	Email    string `json:"email" binding:"required"`
+	IsAdmin  *bool  `json:"isAdmin" binding:"required"`
+	Nickname string `json:"nickname" binding:"required"`
+	ImageURL string `json:"imageURL" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
