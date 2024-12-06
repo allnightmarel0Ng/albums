@@ -15,7 +15,7 @@ type Database interface {
 
 	Close()
 
-	// Begin() error
+	Begin(ctx context.Context) (Transaction, error)
 	// Commit() error
 	// Rollback() error
 }
@@ -26,7 +26,15 @@ type db struct {
 }
 
 func NewDatabase(ctx context.Context, connectionString string) (Database, error) {
-	pool, err := pgxpool.Connect(ctx, connectionString)
+	config, err := pgxpool.ParseConfig(connectionString)
+	if err != nil {
+		return nil, err
+	}
+
+	config.MaxConns = 30
+	config.MinConns = 5
+
+	pool, err := pgxpool.ConnectConfig(context.Background(), config)
 	if err != nil {
 		return nil, err
 	}
@@ -67,15 +75,16 @@ func (db *db) Close() {
 	db.pool.Close()
 }
 
-// func (db *db) Begin() error {
-// 	tx, err := db.pool.Begin(db.ctx)
-// 	if err != nil {
-// 		return err
-// 	}
+func (db *db) Begin(ctx context.Context) (Transaction, error) {
+	tx, err := db.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-// 	db.tx = tx
-// 	return nil
-// }
+	return &transaction{
+		tx: tx,
+	}, nil
+}
 
 // func (db *db) Commit() error {
 // 	if db.tx == nil {

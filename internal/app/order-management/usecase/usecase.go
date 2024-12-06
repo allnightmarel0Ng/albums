@@ -27,11 +27,12 @@ func NewOrderManagementUseCase(repo repository.OrderManagementRepository) OrderM
 }
 
 func (o *orderManagementUseCase) AddAlbumToUserOrder(request api.OrderActionRequest) api.Response {
-	ctx, cancel := utils.DeadlineContext(5)
+	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
 	err := o.repo.AddToOrder(ctx, request.UserID, request.AlbumID)
 	if err != nil {
+		log.Print(err.Error())
 		switch err {
 		case context.DeadlineExceeded:
 		case repository.ErrDatabaseCommunication:
@@ -42,7 +43,7 @@ func (o *orderManagementUseCase) AddAlbumToUserOrder(request api.OrderActionRequ
 		default:
 			return &api.ErrorResponse{
 				Code:  http.StatusBadRequest,
-				Error: "order creation error: album not found",
+				Error: err.Error(),
 			}
 		}
 	}
@@ -51,7 +52,7 @@ func (o *orderManagementUseCase) AddAlbumToUserOrder(request api.OrderActionRequ
 }
 
 func (o *orderManagementUseCase) RemoveAlbumFromUserOrder(request api.OrderActionRequest) api.Response {
-	ctx, cancel := utils.DeadlineContext(5)
+	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
 	err := o.repo.RemoveFromOrder(ctx, request.UserID, request.AlbumID)
@@ -66,7 +67,7 @@ func (o *orderManagementUseCase) RemoveAlbumFromUserOrder(request api.OrderActio
 		default:
 			return &api.ErrorResponse{
 				Code:  http.StatusBadRequest,
-				Error: "order deletion error: album not found",
+				Error: err.Error(),
 			}
 		}
 	}
@@ -75,7 +76,7 @@ func (o *orderManagementUseCase) RemoveAlbumFromUserOrder(request api.OrderActio
 }
 
 func (o *orderManagementUseCase) UserOrder(userID int, unpaidOnly bool) api.Response {
-	ctx, cancel := utils.DeadlineContext(5)
+	ctx, cancel := utils.DeadlineContext(10)
 	defer cancel()
 
 	result, err := o.repo.UserOrder(ctx, userID, unpaidOnly)

@@ -39,7 +39,13 @@ func (o *orderManagementHandler) HandleAdd(c *gin.Context) {
 		return
 	}
 
-	o.useCase.AddAlbumToUserOrder(request)
+	response := o.useCase.AddAlbumToUserOrder(request)
+	if response != nil {
+		utils.Send(c, response)
+		return
+	}
+
+	c.String(http.StatusOK, "")
 }
 
 func (o *orderManagementHandler) HandleRemove(c *gin.Context) {
@@ -55,6 +61,7 @@ func (o *orderManagementHandler) HandleRemove(c *gin.Context) {
 	response := o.useCase.RemoveAlbumFromUserOrder(request)
 	if response != nil {
 		utils.Send(c, response)
+		return
 	}
 
 	c.String(http.StatusOK, "")
@@ -80,7 +87,13 @@ func (o *orderManagementHandler) HandleOrders(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, o.useCase.UserOrder(id, unpaidOnly))
+	response := o.useCase.UserOrder(id, unpaidOnly)
+	if response != nil {
+		utils.Send(c, response)
+		return
+	}
+
+	c.String(http.StatusOK, "")
 }
 
 func parseRequestBody(c *gin.Context) (api.OrderActionRequest, error) {

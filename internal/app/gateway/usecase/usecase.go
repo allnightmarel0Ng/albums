@@ -179,7 +179,17 @@ func (g *gatewayUseCase) Buy(authHeader string) api.Response {
 	}
 
 	var orderResponse api.UnpaidUserOrderResponse
-	json.NewDecoder(response.Body).Decode(&orderResponse)
+	err = json.NewDecoder(response.Body).Decode(&orderResponse)
+	if err != nil {
+		return utils.InterserviceCommunicationError()
+	}
+
+	if orderResponse.Order.Orderer.Balance < orderResponse.Order.TotalPrice {
+		return &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "not enough money on balance",
+		}
+	}
 
 	operation := api.MoneyOperationKafkaMessage{
 		Type:    "buy",

@@ -18,9 +18,10 @@ func (e *ErrorResponse) GetCode() int {
 }
 
 type AuthenticationResponse struct {
-	Code  int    `json:"-"`
-	Error string `json:"error,omitempty"`
-	Jwt   string `json:"jwt,omitempty"`
+	Code    int    `json:"-"`
+	Error   string `json:"error,omitempty"`
+	Jwt     string `json:"jwt,omitempty"`
+	IsAdmin *bool  `json:"isAdmin,omitempty"`
 }
 
 func (a *AuthenticationResponse) GetCode() int {

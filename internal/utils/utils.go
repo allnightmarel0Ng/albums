@@ -136,7 +136,7 @@ func InterserviceCommunicationErrorRaw() (int, []byte) {
 }
 
 func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
-	return context.WithDeadline(context.Background(), time.Now().Add(2*time.Second))
+	return context.WithDeadline(context.Background(), time.Now().Add(time.Duration(seconds)*time.Second))
 }
 
 func GetParam[T any](c *gin.Context, name string) (T, error) {
@@ -150,12 +150,6 @@ func GetParam[T any](c *gin.Context, name string) (T, error) {
 	switch any(result).(type) {
 	case int:
 		val, err := strconv.Atoi(paramStr)
-		if err != nil {
-			return result, err
-		}
-		result = any(val).(T)
-	case uint:
-		val, err := strconv.ParseUint(paramStr, 10, 64)
 		if err != nil {
 			return result, err
 		}

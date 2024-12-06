@@ -26,7 +26,8 @@ const (
 				JOIN public.albums AS a ON pu.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
 				RIGHT JOIN public.tracks AS t ON t.album_id = a.id
-				WHERE pu.user_id = $1;`
+				WHERE pu.user_id = $1
+				ORDER BY a.name, t.number;`
 
 	selectAlbumsLikeNameSQL =
 	/* sql */ `SELECT 
@@ -44,7 +45,8 @@ const (
 				FROM public.tracks AS t
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
-				WHERE a.name ILIKE $1;`
+				WHERE a.name ILIKE $1
+				ORDER BY t.number;`
 
 	selectArtistsAlbumsSQL =
 	/* sql */ `SELECT
@@ -62,7 +64,8 @@ const (
 				FROM public.tracks AS t
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
-				WHERE ar.id = $1;`
+				WHERE ar.id = $1
+				ORDER BY t.number;`
 
 	selectRandomNAlbumsSQL =
 	/* sql */ `SELECT 
@@ -81,7 +84,8 @@ const (
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
 				ORDER BY RANDOM()
-				LIMIT $1;`
+				LIMIT $1
+				ORDER BY t.number;`
 
 	deleteAlbumSQL =
 	/* sql */ `DELETE FROM public.albums
@@ -103,7 +107,8 @@ const (
 				FROM public.tracks AS t
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
-				WHERE a.id = $1;`
+				WHERE a.id = $1
+				ORDER BY t.number;`
 )
 
 type AlbumRepository interface {
@@ -127,6 +132,7 @@ func NewAlbumRepository(db postgres.Database) AlbumRepository {
 
 func albumsFromRows(rows postgres.Rows) ([]model.Album, error) {
 	albumsMap := make(map[int]*model.Album)
+	var ids []int
 
 	for rows.Next() {
 		var (
@@ -148,16 +154,15 @@ func albumsFromRows(rows postgres.Rows) ([]model.Album, error) {
 		if !ok {
 			album.Tracks = []model.Track{track}
 			albumsMap[album.ID] = &album
+			ids = append(ids, album.ID)
 		} else {
 			albumsMap[album.ID].Tracks = append(albumsMap[album.ID].Tracks, track)
 		}
 	}
 
-	result := make([]model.Album, len(albumsMap))
-	i := 0
-	for _, v := range albumsMap {
-		result[i] = *v
-		i++
+	result := make([]model.Album, len(ids))
+	for i, id := range ids {
+		result[i] = *albumsMap[id]
 	}
 
 	return result, nil

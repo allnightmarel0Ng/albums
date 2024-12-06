@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/domain/repository"
@@ -12,6 +13,7 @@ var (
 	ErrDatabaseCommunication = errors.New("db communication error")
 	ErrAlreadyInOrder        = errors.New("album is already in order")
 	ErrNotInOrder            = errors.New("album not in order")
+	ErrNoOrderFound          = errors.New("album not found")
 )
 
 type OrderManagementRepository interface {
@@ -40,16 +42,12 @@ func (o *orderManagementRepository) AddToOrder(ctx context.Context, userID, albu
 			return ErrDatabaseCommunication
 		}
 
+		log.Print(orders)
 		if len(orders) == 1 {
-			found := false
 			for i := 0; i < len(orders[0].Albums); i++ {
-				if albumID == orders[0].Albums[0].ID {
-					found = true
+				if albumID == orders[0].Albums[i].ID {
+					return ErrAlreadyInOrder
 				}
-			}
-
-			if !found {
-				return ErrNotInOrder
 			}
 		}
 
@@ -67,11 +65,20 @@ func (o *orderManagementRepository) RemoveFromOrder(ctx context.Context, userID,
 			return ErrDatabaseCommunication
 		}
 
+		if len(orders) == 0 {
+			return ErrNoOrderFound
+		}
+
 		if len(orders) == 1 {
+			found := false
 			for i := 0; i < len(orders[0].Albums); i++ {
-				if albumID == orders[0].Albums[0].ID {
-					return ErrAlreadyInOrder
+				if albumID == orders[0].Albums[i].ID {
+					found = true
 				}
+			}
+
+			if !found {
+				return ErrNotInOrder
 			}
 		}
 

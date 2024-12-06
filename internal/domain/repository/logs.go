@@ -18,14 +18,11 @@ const (
 					u.image_url,
 					a.id,
 					a.name,
-					ar.name,
-					ar.genre,
-					ar.image_url,
 					a.image_url,
 					a.price,
 					b.logging_time
 				FROM public.buy_logs AS b
-				JOIN public.users AS u ON u.id = b.user_id
+				JOIN public.users AS u ON u.id = b.buyer_id
 				JOIN public.albums AS a ON a.id = b.album_id
 				LIMIT $2
 				OFFSET $1;`
@@ -61,7 +58,6 @@ func (l *logsRepository) GetLogs(ctx context.Context, offset, limit uint) ([]mod
 		var log model.BuyLog
 		var user model.User
 		var album model.Album
-		var artistName, artistGenre, artistImageURL string
 
 		err := rows.Scan(
 			&log.ID,
@@ -73,9 +69,6 @@ func (l *logsRepository) GetLogs(ctx context.Context, offset, limit uint) ([]mod
 			&user.ImageURL,
 			&album.ID,
 			&album.Name,
-			&artistName,
-			&artistGenre,
-			&artistImageURL,
 			&album.ImageURL,
 			&album.Price,
 			&log.LoggingTime,
@@ -84,12 +77,7 @@ func (l *logsRepository) GetLogs(ctx context.Context, offset, limit uint) ([]mod
 			return nil, err
 		}
 
-		album.Author = &model.Artist{
-			Name:     artistName,
-			Genre:    artistGenre,
-			ImageURL: artistImageURL,
-		}
-
+		album.Author = nil
 		log.Buyer = user
 		log.Album = album
 

@@ -37,6 +37,14 @@ const (
 	insertNewUserSQL =
 	/* sql */ `INSERT INTO public.users (email, password_hash, is_admin, nickname, image_url)
 				VALUES ($1, $2, $3, $4, $5);`
+
+	findEmailSQL =
+	/* sql */ `SELECT 
+				CASE 
+					WHEN EXISTS (SELECT 1 FROM public.users WHERE email = $1) 
+					THEN TRUE 
+					ELSE FALSE 
+				END AS email_exists;`
 )
 
 type UserRepository interface {
@@ -45,6 +53,7 @@ type UserRepository interface {
 	ChangeBalance(ctx context.Context, id int, diff uint) error
 	PayForOrder(ctx context.Context, userID int, orderID int) error
 	AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error
+	FindUserByEmail(ctx context.Context, email string) (bool, error)
 }
 
 type userRepository struct {
@@ -84,9 +93,15 @@ func (u *userRepository) ChangeBalance(ctx context.Context, id int, diff uint) e
 }
 
 func (u *userRepository) PayForOrder(ctx context.Context, userID int, orderID int) error {
-	return u.db.Exec(ctx, callPayForOrderSQL, userID, orderID)
+	return callWillSerialization(u.db, ctx, callPayForOrderSQL, userID, orderID)
 }
 
 func (u *userRepository) AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error {
 	return u.db.Exec(ctx, insertNewUserSQL, email, password_hash, isAdmin, nickname, imageURL)
+}
+
+func (u *userRepository) FindUserByEmail(ctx context.Context, email string) (bool, error) {
+	var result bool
+	err := u.db.QueryRow(ctx, findEmailSQL, email).Scan(&result)
+	return result, err
 }

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
@@ -9,9 +10,9 @@ import (
 )
 
 const (
-	selectAddAlbumProcedureSQL =
+	callAddAlbumProcedureSQL =
 	/* sql */ `CALL add_album_to_user_order($1, $2);`
-	selectDeleteAlbumProcedureSQL =
+	callDeleteAlbumProcedureSQL =
 	/* sql */ `CALL delete_album_from_user_order($1, $2);`
 	selectUserOrdersSQL =
 	/* sql */ `SELECT
@@ -38,9 +39,9 @@ const (
 				JOIN public.order_items AS oi ON oi.order_id = o.id
 				RIGHT JOIN public.albums AS a ON oi.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
-				WHERE u.id = $1
-				`
-	isPaidFilterSQl = " AND o.is_paid = FALSE;"
+				WHERE u.id = $1`
+	isPaidFilterSQL = " AND o.is_paid = FALSE"
+	orderSQL        = "\tORDER BY o.is_paid, o.id"
 )
 
 type OrderRepository interface {
@@ -60,13 +61,11 @@ func NewOrderRepository(db postgres.Database) OrderRepository {
 }
 
 func (o *orderRepository) AddAlbumToUserOrder(ctx context.Context, userID, albumID int) error {
-	_, err := o.db.Query(ctx, selectAddAlbumProcedureSQL, userID, albumID)
-	return err
+	return callWillSerialization(o.db, ctx, callAddAlbumProcedureSQL, userID, albumID)
 }
 
 func (o *orderRepository) DeleteAlbumFromUserOrder(ctx context.Context, userID, albumID int) error {
-	_, err := o.db.Query(ctx, selectDeleteAlbumProcedureSQL, userID, albumID)
-	return err
+	return callWillSerialization(o.db, ctx, callDeleteAlbumProcedureSQL, userID, albumID)
 }
 
 func (o *orderRepository) GetUserOrders(ctx context.Context, userID int, unpaidOnly bool) ([]model.Order, error) {
@@ -76,17 +75,21 @@ func (o *orderRepository) GetUserOrders(ctx context.Context, userID int, unpaidO
 		return nil, err
 	}
 
-	switch unpaidOnly {
-	case true:
-		_, err := sb.WriteString(isPaidFilterSQl)
+	if unpaidOnly {
+		_, err := sb.WriteString(isPaidFilterSQL)
 		if err != nil {
 			return nil, err
 		}
-	case false:
-		_, err := sb.WriteRune(';')
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	_, err = sb.WriteString(orderSQL)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = sb.WriteRune(';')
+	if err != nil {
+		return nil, err
 	}
 
 	rows, err := o.db.Query(ctx, sb.String(), userID)
@@ -99,14 +102,17 @@ func (o *orderRepository) GetUserOrders(ctx context.Context, userID int, unpaidO
 
 	for rows.Next() {
 		var (
-			order model.Order
-			album model.Album
+			order  model.Order
+			album  model.Album
+			author model.Artist
 		)
 
-		err := rows.Scan(&order.ID, &order.Orderer.ID, &order.Orderer.Email, &order.Orderer.IsAdmin, &order.Orderer.Nickname, &order.Orderer.Balance, &order.Orderer.ImageURL, &order.Date, &order.TotalPrice, &order.IsPaid, &album.ID, &album.Name, &album.Author.ID, &album.Author.Name, &album.Author.Genre, &album.Author.ImageURL, &album.ImageURL, &album.Price)
+		err := rows.Scan(&order.ID, &order.Orderer.ID, &order.Orderer.Email, &order.Orderer.IsAdmin, &order.Orderer.Nickname, &order.Orderer.Balance, &order.Orderer.ImageURL, &order.Date, &order.TotalPrice, &order.IsPaid, &album.ID, &album.Name, &author.ID, &author.Name, &author.Genre, &author.ImageURL, &album.ImageURL, &album.Price)
 		if err != nil {
 			return nil, err
 		}
+
+		album.Author = &author
 
 		_, ok := ordersMap[order.ID]
 		if !ok {
@@ -125,4 +131,28 @@ func (o *orderRepository) GetUserOrders(ctx context.Context, userID int, unpaidO
 	}
 
 	return result, nil
+}
+
+func callWillSerialization(db postgres.Database, ctx context.Context, sql string, params ...interface{}) error {
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("recovered from panic! %v", r)
+		}
+
+		if err == nil {
+			err = tx.Commit(ctx)
+		} else {
+			err = tx.Rollback(ctx)
+		}
+	}()
+
+	err = tx.Exec(ctx, "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;")
+	err = tx.Exec(ctx, sql, params...)
+	err = tx.Commit(ctx)
+	return err
 }

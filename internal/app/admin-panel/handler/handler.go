@@ -26,7 +26,16 @@ func NewAdminPanelHandler(useCase usecase.AdminPanelUseCase) AdminPanelHandler {
 }
 
 func (a *adminPanelHandler) HandleBuyLogs(c *gin.Context) {
-	pageNumber, err := utils.GetParam[uint](c, "pageNumber")
+	paramStr, ok := c.Params.Get("pageNumber")
+	if !ok {
+		utils.Send(c, &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "invalid 'pageNumber' parameter",
+		})
+		return
+	}
+
+	pageNumber, err := strconv.ParseUint(paramStr, 10, 64)
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,
@@ -45,7 +54,7 @@ func (a *adminPanelHandler) HandleBuyLogs(c *gin.Context) {
 		return
 	}
 
-	utils.Send(c, a.useCase.Logs(pageNumber, uint(pageSize)))
+	utils.Send(c, a.useCase.Logs(uint(pageNumber), uint(pageSize)))
 }
 
 func (a *adminPanelHandler) HandleDeleteAlbum(c *gin.Context) {

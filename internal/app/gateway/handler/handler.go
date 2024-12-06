@@ -131,7 +131,7 @@ func (g *gatewayHandler) HandleBuy(c *gin.Context) {
 }
 
 func (g *gatewayHandler) HandleLogs(c *gin.Context) {
-	params := c.Param("id")
+	params := c.Param("pageNumber")
 	query := c.Request.URL.RawQuery
 	if query != "" {
 		params += "?" + query

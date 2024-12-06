@@ -82,8 +82,9 @@ func (a *authorizationUseCase) Authenticate(b64 string) api.Response {
 	}
 
 	return &api.AuthenticationResponse{
-		Code: http.StatusOK,
-		Jwt:  result,
+		Code:    http.StatusOK,
+		Jwt:     result,
+		IsAdmin: &isAdmin,
 	}
 }
 
@@ -143,6 +144,24 @@ func (a *authorizationUseCase) Register(request api.RegistrationRequest) api.Res
 		}
 	}
 
+	ctx, cancel := utils.DeadlineContext(10)
+	defer cancel()
+
+	found, err := a.repo.FindUserByEmail(ctx, request.Email)
+	if err != nil {
+		return &api.ErrorResponse{
+			Code:  http.StatusInternalServerError,
+			Error: "database communication error",
+		}
+	}
+
+	if found {
+		return &api.ErrorResponse{
+			Code:  http.StatusBadRequest,
+			Error: "user with such email already exist",
+		}
+	}
+
 	hashed, err := bcrypt.GenerateFromPassword([]byte(request.Password), -1)
 	if err != nil {
 		return &api.ErrorResponse{
@@ -150,9 +169,6 @@ func (a *authorizationUseCase) Register(request api.RegistrationRequest) api.Res
 			Error: "unable to hash password",
 		}
 	}
-
-	ctx, cancel := utils.DeadlineContext(5)
-	defer cancel()
 
 	err = a.repo.AddNewUser(ctx, request.Email, string(hashed), *request.IsAdmin, request.Nickname, request.ImageURL)
 	if err != nil {
