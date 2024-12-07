@@ -2,17 +2,17 @@ import re
 import streamlit as st
 import requests
 
-from main import chunked, get_image_url, fetch_orders
+from main import chunked, get_image_url, fetch_orders, GATEWAY_PORT
 
-PROFILE_URL = "http://localhost:8080/profile"
-LOGS_URL = "http://localhost:8080/admin-panel/logs/{page_number}?pageSize={page_size}"
-SAVE_DUMP_URL = "http://localhost:8080/admin-panel/save-dump"
-LOAD_DUMP_URL = "http://localhost:8080/admin-panel/load-dump"
+PROFILE_URL = "http://localhost:{GATEWAY_PORT}/profile"
+LOGS_URL = "http://localhost:{GATEWAY_PORT}/admin-panel/logs/{page_number}?pageSize={page_size}"
+SAVE_DUMP_URL = "http://localhost:{GATEWAY_PORT}/admin-panel/save-dump"
+LOAD_DUMP_URL = "http://localhost:{GATEWAY_PORT}/admin-panel/load-dump"
 
 def fetch_user_profile():
     headers = {"Authorization": f"Bearer {st.session_state.get('jwt_token')}"}
     try:
-        response = requests.get(PROFILE_URL, headers=headers)
+        response = requests.get(PROFILE_URL.format(GATEWAY_PORT=GATEWAY_PORT), headers=headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -26,7 +26,7 @@ def download():
 def fetch_logs(page_number, page_size=10):
     headers = {"Authorization": f"Bearer {st.session_state.get('jwt_token')}"}
     try:
-        response = requests.get(LOGS_URL.format(page_number=page_number, page_size=page_size), headers=headers)
+        response = requests.get(LOGS_URL.format(GATEWAY_PORT=GATEWAY_PORT, page_number=page_number, page_size=page_size), headers=headers)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
@@ -43,7 +43,7 @@ def extract_filename_from_header(header):
 def save_dump():
     headers = {"Authorization": f"Bearer {st.session_state.get('jwt_token')}"}
     try:
-        response = requests.get(SAVE_DUMP_URL, headers=headers)
+        response = requests.get(SAVE_DUMP_URL.format(GATEWAY_PORT=GATEWAY_PORT), headers=headers)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         st.error(f"Error saving dump: {e}")
@@ -78,7 +78,7 @@ def load_dump(uploaded_file):
         }
 
         try:
-            response = requests.post(LOAD_DUMP_URL, files=files, headers=headers)
+            response = requests.post(LOAD_DUMP_URL.format(GATEWAY_PORT=GATEWAY_PORT), files=files, headers=headers)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             st.error(f"Failed to upload database dump: {e}")

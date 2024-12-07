@@ -1,17 +1,17 @@
 import streamlit as st
 import requests
 
-DEPOSIT_URL = "http://localhost:8080/deposit"
+from main import GATEWAY_PORT
+
+DEPOSIT_URL = "http://localhost:{GATEWAY_PORT}/deposit"
 
 from main import get_authorization_header
 
 def deposit_money(amount, headers):
-
     payload = {"money": amount}
     try:
-        response = requests.post(DEPOSIT_URL, json=payload, headers=headers)
+        response = requests.post(DEPOSIT_URL.format(GATEWAY_PORT=GATEWAY_PORT), json=payload, headers=headers)
         response.raise_for_status()
-        st.success(f"Successfully deposited ${amount}!")
         return True
     except requests.exceptions.RequestException as e:
         st.error(f"Error depositing money: {e}")
@@ -30,9 +30,9 @@ def display_deposit_page():
     if st.button("Deposit"):
         if amount > 0:
             if deposit_money(amount, headers):
-                st.write(f"Deposit of ${amount} completed.")
+                st.success(f"Deposit of ${amount} process has been started. Wait for completion in notifications!")
             else:
-                st.write("Failed to complete deposit.")
+                st.write("Failed to start transaction!")
         else:
             st.error("Please enter a valid amount greater than zero.")
 

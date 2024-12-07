@@ -13,20 +13,22 @@ from globals import notification_list
 
 load_dotenv()
 
-NOTIFICATIONS_URL = "ws://localhost:8081/ws"
-LOGIN_URL = "http://localhost:8080/login"
-REGISTRATION_URL = "http://localhost:8080/registration"
-LOGOUT_URL = "http://localhost:8080/logout"
-SEARCH_URL = "http://localhost:8080/search"
-ADD_TO_ORDER_URL = "http://localhost:8080/add/{album_id}"
-REMOVE_FROM_ORDER_URL = "http://localhost:8080/remove/{album_id}"
-ORDERS_URL = "http://localhost:8080/orders/"
-DELETE_ALBUM = "http://localhost:8080/admin-panel/delete/{id}"
+NOTIFICATIONS_URL = "ws://localhost:{NOTIFICATIONS_PORT}/ws"
+LOGIN_URL = "http://localhost:{GATEWAY_PORT}/login"
+REGISTRATION_URL = "http://localhost:{GATEWAY_PORT}/registration"
+LOGOUT_URL = "http://localhost:{GATEWAY_PORT}/logout"
+SEARCH_URL = "http://localhost:{GATEWAY_PORT}/search"
+ADD_TO_ORDER_URL = "http://localhost:{GATEWAY_PORT}/add/{album_id}"
+REMOVE_FROM_ORDER_URL = "http://localhost:{GATEWAY_PORT}/remove/{album_id}"
+ORDERS_URL = "http://localhost:{GATEWAY_PORT}/orders/"
+DELETE_ALBUM = "http://localhost:{GATEWAY_PORT}/admin-panel/delete/{id}"
 
 ADMIN_PASS = os.getenv("ADMIN_PASS", "")
+GATEWAY_PORT = os.getenv("GATEWAY_PORT", "")
+NOTIFICATIONS_PORT = os.getenv("NOTIFICATIONS_PORT", "")
 
 def connect_to_notifications(jwt):
-    ws_url = NOTIFICATIONS_URL
+    ws_url = NOTIFICATIONS_URL.format(NOTIFICATIONS_PORT=NOTIFICATIONS_PORT)
 
     def on_message(ws, message):
         data = json.loads(message)
@@ -59,7 +61,7 @@ def fetch_orders():
         return None
 
     try:
-        response = requests.get(ORDERS_URL, headers=headers)
+        response = requests.get(ORDERS_URL.format(GATEWAY_PORT=GATEWAY_PORT), headers=headers)
         response.raise_for_status()
         data = response.json()
         all_orders = data.get("orders", [])
@@ -77,7 +79,7 @@ def add_to_order(album_id):
         st.session_state["order"].append(album_id)
         if "bought" in st.session_state:
             st.session_state["bought"] = False
-        url = ADD_TO_ORDER_URL.format(album_id=album_id)
+        url = ADD_TO_ORDER_URL.format(GATEWAY_PORT=GATEWAY_PORT, album_id=album_id)
         headers = get_authorization_header()
         try:
             response = requests.post(url, headers=headers)
@@ -93,7 +95,7 @@ def add_to_order(album_id):
 def remove_from_order(album_id):
     if "order" in st.session_state and album_id in st.session_state["order"]:
         st.session_state["order"].remove(album_id)
-        url = REMOVE_FROM_ORDER_URL.format(album_id=album_id)
+        url = REMOVE_FROM_ORDER_URL.format(GATEWAY_PORT=GATEWAY_PORT, album_id=album_id)
         headers = get_authorization_header()
         try:
             response = requests.post(url, headers=headers)
@@ -115,7 +117,7 @@ def toggle_order_button(album_id, postfix: str = 'mainpage'):
         st.button("Add to order", key=f"add_{album_id}_{postfix}", on_click=add_to_order, args=(album_id,))
 
 def fetch_data():
-    url = "http://localhost:8080/"
+    url = f"http://localhost:{GATEWAY_PORT}/"
     payload = {"albumsCount": 10, "artistsCount": 5}
     headers = get_authorization_header()
     try:
@@ -127,7 +129,7 @@ def fetch_data():
         return None
 
 def search(query):
-    url = SEARCH_URL
+    url = SEARCH_URL.format(GATEWAY_PORT=GATEWAY_PORT)
     payload = {"query": query}
     headers = get_authorization_header()
     try:
@@ -139,7 +141,7 @@ def search(query):
         return None
     
 def fetch_profile(entity_type, entity_id):
-    url = f"http://localhost:8080/{entity_type}/{entity_id}"
+    url = f"http://localhost:{GATEWAY_PORT}/{entity_type}/{entity_id}"
     headers = get_authorization_header()
     try:
         response = requests.get(url, headers=headers)
@@ -176,7 +178,7 @@ def login():
         headers = {"Authorization": f"Basic {encoded_credentials}"}
         
         try:
-            response = requests.get(LOGIN_URL, headers=headers)
+            response = requests.get(LOGIN_URL.format(GATEWAY_PORT=GATEWAY_PORT), headers=headers)
             response.raise_for_status()
             data = response.json()
             if "jwt" in data and "isAdmin" in data:
@@ -218,7 +220,7 @@ def register():
             }
 
             try:
-                response = requests.post(REGISTRATION_URL, json=registration_data)
+                response = requests.post(REGISTRATION_URL.format(GATEWAY_PORT=GATEWAY_PORT), json=registration_data)
                 response.raise_for_status()
                 st.success("Registration successful! Please log in.")
             except requests.exceptions.RequestException as e:
@@ -231,7 +233,7 @@ def logout():
     if token:
         headers = {"Authorization": f"Bearer {token}"}
         try:
-            response = requests.post(LOGOUT_URL, headers=headers)
+            response = requests.post(LOGOUT_URL.format(GATEWAY_PORT=GATEWAY_PORT), headers=headers)
             response.raise_for_status()
             st.session_state.pop("jwt_token", None)
             st.success("Logged out successfully!")
@@ -243,7 +245,7 @@ def delete_album(album_id):
     headers = get_authorization_header()
     
     try:
-        response = requests.delete(DELETE_ALBUM.format(id=album_id), headers=headers)
+        response = requests.delete(DELETE_ALBUM.format(GATEWAY_PORT=GATEWAY_PORT, id=album_id), headers=headers)
         response.raise_for_status()
         st.session_state["reload"] = True
     except requests.exceptions.RequestException as e:

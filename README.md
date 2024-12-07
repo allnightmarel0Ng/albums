@@ -7,9 +7,16 @@
 
 ## Build
 
+### Backend
 ```shell
 make # build and run
 make build
 make run
 make down # close the application
+```
+
+### Frontend
+```shell
+pip3 install -r requirements.txt
+streamlit run web/main.py
 ```

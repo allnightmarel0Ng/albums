@@ -1,9 +1,9 @@
 import requests
 import streamlit as st
 
-from main import get_authorization_header
+from main import get_authorization_header, GATEWAY_PORT
 
-ORDERS_URL = "http://localhost:8080/orders"
+ORDERS_URL = "http://localhost:{GATEWAY_PORT}/orders"
 
 def fetch_orders():
     headers = get_authorization_header()
@@ -12,7 +12,7 @@ def fetch_orders():
         return None
     
     try:
-        response = requests.get(ORDERS_URL, headers=headers)
+        response = requests.get(ORDERS_URL.format(GATEWAY_PORT=GATEWAY_PORT), headers=headers)
         response.raise_for_status()
         data = response.json()
         return data.get("orders", [])
@@ -21,14 +21,14 @@ def fetch_orders():
         return None
 
 def buy_order():
-    url = f"http://localhost:8080/buy"
+    url = f"http://localhost:{GATEWAY_PORT}/buy"
     headers = get_authorization_header()
 
     try:
         response = requests.post(url, headers=headers)
 
         if response.status_code == 200:
-            st.success(f"Order has been successfully bought!")
+            st.success(f"Order buying process has been started! Wait for info in notifications!")
             if "order" in st.session_state:
                 st.session_state["order"].clear()
             st.session_state["bought"] = True
