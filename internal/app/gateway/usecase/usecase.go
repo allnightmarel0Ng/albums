@@ -98,7 +98,7 @@ func (g *gatewayUseCase) Register(body io.Reader) (int, []byte) {
 }
 
 func (g *gatewayUseCase) UserProfile(authHeader string) (int, []byte) {
-	authorizationResponse := g.authorize(authHeader)
+	authorizationResponse := utils.Authorize(authHeader, g.authorizationPort)
 	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)
 		return authorizationResponse.GetCode(), raw
@@ -126,7 +126,7 @@ func (g *gatewayUseCase) RemoveFromOrder(authHeader string, albumID int) (int, [
 }
 
 func (g *gatewayUseCase) Deposit(authHeader string, diff uint) api.Response {
-	authResponse := g.authorize(authHeader)
+	authResponse := utils.Authorize(authHeader, g.authorizationPort)
 	if authResponse.GetCode() != http.StatusOK {
 		return authResponse
 	}
@@ -134,7 +134,7 @@ func (g *gatewayUseCase) Deposit(authHeader string, diff uint) api.Response {
 	claims := authResponse.(*api.AuthorizationResponse)
 
 	operation := api.MoneyOperationKafkaMessage{
-		Type:   "deposit",
+		Type:   api.Deposit,
 		UserID: claims.ID,
 		Diff:   diff,
 	}
@@ -156,7 +156,7 @@ func (g *gatewayUseCase) Deposit(authHeader string, diff uint) api.Response {
 }
 
 func (g *gatewayUseCase) Buy(authHeader string) api.Response {
-	authResponse := g.authorize(authHeader)
+	authResponse := utils.Authorize(authHeader, g.authorizationPort)
 	if authResponse.GetCode() != http.StatusOK {
 		return authResponse
 	}
@@ -192,7 +192,7 @@ func (g *gatewayUseCase) Buy(authHeader string) api.Response {
 	}
 
 	operation := api.MoneyOperationKafkaMessage{
-		Type:    "buy",
+		Type:    api.Buy,
 		UserID:  claims.ID,
 		OrderID: orderResponse.Order.ID,
 	}
@@ -214,7 +214,7 @@ func (g *gatewayUseCase) Buy(authHeader string) api.Response {
 }
 
 func (g *gatewayUseCase) UserOrders(authHeader string) (int, []byte) {
-	authorizationResponse := g.authorize(authHeader)
+	authorizationResponse := utils.Authorize(authHeader, g.authorizationPort)
 	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)
 		return authorizationResponse.GetCode(), raw
@@ -291,7 +291,7 @@ func (g *gatewayUseCase) LoadDump(authHeader, filePath string) (int, []byte) {
 }
 
 func (g *gatewayUseCase) AuthorizeAdmin(authHeader string) (int, []byte) {
-	authorizationResponse := g.authorize(authHeader)
+	authorizationResponse := utils.Authorize(authHeader, g.authorizationPort)
 	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)
 		return authorizationResponse.GetCode(), raw
@@ -309,39 +309,8 @@ func (g *gatewayUseCase) AuthorizeAdmin(authHeader string) (int, []byte) {
 	return http.StatusOK, nil
 }
 
-func (g *gatewayUseCase) authorize(authHeader string) api.Response {
-	ctx, cancel := utils.DeadlineContext(10)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://authorization:%s/authorize", g.authorizationPort), nil)
-	if err != nil {
-		return utils.InterserviceCommunicationError()
-	}
-	request.Header.Set("Authorization", authHeader)
-
-	client := &http.Client{}
-	response, err := client.Do(request)
-	if err != nil {
-		return utils.InterserviceCommunicationError()
-	}
-	defer response.Body.Close()
-
-	var result api.AuthorizationResponse
-	json.NewDecoder(response.Body).Decode(&result)
-
-	if response.StatusCode != http.StatusOK {
-		return &api.ErrorResponse{
-			Code:  http.StatusUnauthorized,
-			Error: result.Error,
-		}
-	}
-
-	result.Code = http.StatusOK
-	return &result
-}
-
 func (g *gatewayUseCase) orderAction(albumID int, authHeader string, action string) (int, []byte) {
-	authorizationResponse := g.authorize(authHeader)
+	authorizationResponse := utils.Authorize(authHeader, g.authorizationPort)
 	if authorizationResponse.GetCode() != http.StatusOK {
 		raw, _ := json.Marshal(authorizationResponse)
 		return authorizationResponse.GetCode(), raw

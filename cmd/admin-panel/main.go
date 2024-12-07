@@ -11,6 +11,7 @@ import (
 	"github.com/allnightmarel0Ng/albums/internal/app/admin-panel/usecase"
 	"github.com/allnightmarel0Ng/albums/internal/config"
 	domainRepository "github.com/allnightmarel0Ng/albums/internal/domain/repository"
+	"github.com/allnightmarel0Ng/albums/internal/infrastructure/kafka"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
 	"github.com/gin-gonic/gin"
 )
@@ -27,8 +28,14 @@ func main() {
 	}
 	defer db.Close()
 
+	p, err := kafka.NewProducer(fmt.Sprintf("kafka:%s", conf.KafkaPort), 3)
+	if err != nil {
+		log.Fatalf("unable to create a producer: %s", err.Error())
+	}
+	defer p.Close()
+
 	repo := repository.NewAdminPanelRepository(domainRepository.NewAlbumRepository(db), domainRepository.NewLogsRepository(db))
-	useCase := usecase.NewAdminPanelUseCase(repo)
+	useCase := usecase.NewAdminPanelUseCase(repo, conf.ProfilePort, p)
 	handler := handler.NewAdminPanelHandler(useCase)
 
 	router := gin.Default()

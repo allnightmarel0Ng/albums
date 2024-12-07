@@ -84,8 +84,7 @@ const (
 				LEFT JOIN public.albums AS a ON t.album_id = a.id
 				JOIN public.artists AS ar ON a.artist_id = ar.id
 				ORDER BY RANDOM()
-				LIMIT $1
-				ORDER BY t.number;`
+				LIMIT $1;`
 
 	deleteAlbumSQL =
 	/* sql */ `DELETE FROM public.albums
@@ -109,6 +108,11 @@ const (
 				JOIN public.artists AS ar ON a.artist_id = ar.id
 				WHERE a.id = $1
 				ORDER BY t.number;`
+
+	selectAlbumNameSQL =
+	/* sql */ `SELECT name
+				FROM public.albums
+				WHERE id = $1;`
 )
 
 type AlbumRepository interface {
@@ -118,6 +122,7 @@ type AlbumRepository interface {
 	GetRandomNAlbums(ctx context.Context, count uint) ([]model.Album, error)
 	DeleteAlbum(ctx context.Context, albumID int) error
 	GetAlbumByID(ctx context.Context, albumID int) (model.Album, error)
+	GetAlbumName(ctx context.Context, albumID int) (string, error)
 }
 
 type albumRepository struct {
@@ -227,4 +232,10 @@ func (a *albumRepository) GetAlbumByID(ctx context.Context, albumID int) (model.
 	}
 
 	return result[0], nil
+}
+
+func (a *albumRepository) GetAlbumName(ctx context.Context, id int) (string, error) {
+	var result string
+	err := a.db.QueryRow(ctx, selectAlbumNameSQL, id).Scan(&result)
+	return result, err
 }

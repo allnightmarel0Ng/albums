@@ -13,6 +13,7 @@ type ProfileHandler interface {
 	HandleArtistProfile(c *gin.Context)
 	HandleUserProfile(c *gin.Context)
 	HandleAlbumProfile(c *gin.Context)
+	HandleOwners(c *gin.Context)
 }
 
 type profileHandler struct {
@@ -26,7 +27,7 @@ func NewProfileHandler(useCase usecase.ProfileUseCase) ProfileHandler {
 }
 
 func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
-	id, err := utils.GetParam[int](c, "id")
+	id, err := utils.GetParam(c, "id")
 	if err != nil {
 		sendParsingError(c, err)
 		return
@@ -36,7 +37,7 @@ func (p *profileHandler) HandleArtistProfile(c *gin.Context) {
 }
 
 func (p *profileHandler) HandleUserProfile(c *gin.Context) {
-	id, err := utils.GetParam[int](c, "id")
+	id, err := utils.GetParam(c, "id")
 	if err != nil {
 		sendParsingError(c, err)
 		return
@@ -46,13 +47,23 @@ func (p *profileHandler) HandleUserProfile(c *gin.Context) {
 }
 
 func (p *profileHandler) HandleAlbumProfile(c *gin.Context) {
-	id, err := utils.GetParam[int](c, "id")
+	id, err := utils.GetParam(c, "id")
 	if err != nil {
 		sendParsingError(c, err)
 		return
 	}
 
 	utils.Send(c, p.useCase.GetAlbumProfile(id))
+}
+
+func (p *profileHandler) HandleOwners(c *gin.Context) {
+	id, err := utils.GetParam(c, "id")
+	if err != nil {
+		sendParsingError(c, err)
+		return
+	}
+
+	utils.Send(c, p.useCase.GetAlbumOwnersIds(id))
 }
 
 func sendParsingError(c *gin.Context, err error) {

@@ -6,16 +6,22 @@ DROP TABLE IF EXISTS public.purchased_albums CASCADE;
 DROP TABLE IF EXISTS public.tracks CASCADE;
 DROP TABLE IF EXISTS public.albums CASCADE;
 DROP TABLE IF EXISTS public.artists CASCADE;
+DROP TABLE IF EXISTS public.credentials CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
 
 CREATE TABLE public.users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(70) NOT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     nickname VARCHAR(30) NOT NULL,
     balance DECIMAL(10, 2) NOT NULL DEFAULT 0,
     image_url VARCHAR(255) NOT NULL DEFAULT '-'
+);
+
+CREATE TABLE public.credentials (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES public.users(id) ON DELETE CASCADE,
+    password_hash VARCHAR(70) NOT NULL
 );
 
 CREATE TABLE public.artists (
@@ -65,10 +71,4 @@ CREATE TABLE public.buy_logs (
     buyer_id INT REFERENCES public.users(id) ON DELETE SET NULL,
     album_id INT REFERENCES public.albums(id) ON DELETE SET NULL,
     logging_time TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE public.notifications (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES public.users(id) ON DELETE CASCADE,
-    message TEXT NOT NULL
 );

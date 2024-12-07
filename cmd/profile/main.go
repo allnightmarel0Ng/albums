@@ -39,6 +39,7 @@ func main() {
 	router.GET("/users/:id", handler.HandleUserProfile)
 	router.GET("/artists/:id", handler.HandleArtistProfile)
 	router.GET("/albums/:id", handler.HandleAlbumProfile)
+	router.GET("/owners/:id", handler.HandleOwners)
 
 	log.Fatal(http.ListenAndServe(":"+conf.ProfilePort, router))
 }

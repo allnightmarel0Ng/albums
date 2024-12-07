@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/model"
 	"github.com/allnightmarel0Ng/albums/internal/infrastructure/postgres"
@@ -10,10 +11,11 @@ import (
 const (
 	selectIDPasswordHashByEmailSQL =
 	/* sql */ `SELECT
-					id,
-					password_hash,
-					is_admin
-				FROM public.users
+					u.id,
+					c.password_hash,
+					u.is_admin
+				FROM public.users AS u
+				JOIN public.credentials AS c ON c.user_id = u.id
 				WHERE email = $1;`
 	selectUserByEmailSQL =
 	/* sql */ `SELECT
@@ -35,16 +37,26 @@ const (
 	/* sql */ `CALL pay_for_order($1, $2);`
 
 	insertNewUserSQL =
-	/* sql */ `INSERT INTO public.users (email, password_hash, is_admin, nickname, image_url)
-				VALUES ($1, $2, $3, $4, $5);`
+	/* sql */ `INSERT INTO public.users (email, is_admin, nickname, image_url)
+				VALUES ($1, $2, $3, $4)
+				RETURNING id;`
+
+	insertNewCredentialSQL =
+	/* sql */ `INSERT INTO public.credentials (user_id, password_hash)
+				VALUES ($1, $2);`
 
 	findEmailSQL =
 	/* sql */ `SELECT 
-				CASE 
-					WHEN EXISTS (SELECT 1 FROM public.users WHERE email = $1) 
-					THEN TRUE 
-					ELSE FALSE 
-				END AS email_exists;`
+					CASE 
+						WHEN EXISTS (SELECT 1 FROM public.users WHERE email = $1) 
+						THEN TRUE 
+						ELSE FALSE 
+					END AS email_exists;`
+
+	selectAlbumOwnersIdsSQL =
+	/* sql */ `SELECT user_id
+				FROM public.purchased_albums
+				WHERE album_id = $1;`
 )
 
 type UserRepository interface {
@@ -54,6 +66,7 @@ type UserRepository interface {
 	PayForOrder(ctx context.Context, userID int, orderID int) error
 	AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error
 	FindUserByEmail(ctx context.Context, email string) (bool, error)
+	GetAlbumOwnersIds(ctx context.Context, albumID int) ([]int, error)
 }
 
 type userRepository struct {
@@ -97,11 +110,55 @@ func (u *userRepository) PayForOrder(ctx context.Context, userID int, orderID in
 }
 
 func (u *userRepository) AddNewUser(ctx context.Context, email, password_hash string, isAdmin bool, nickname, imageURL string) error {
-	return u.db.Exec(ctx, insertNewUserSQL, email, password_hash, isAdmin, nickname, imageURL)
+	tx, err := u.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("recovered from panic: %v", r)
+		}
+
+		if err != nil {
+			err = tx.Rollback(ctx)
+		} else {
+			err = tx.Commit(ctx)
+		}
+	}()
+
+	var id int
+	err = tx.QueryRow(ctx, insertNewUserSQL, email, isAdmin, nickname, imageURL).Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	return tx.Exec(ctx, insertNewCredentialSQL, id, password_hash)
 }
 
 func (u *userRepository) FindUserByEmail(ctx context.Context, email string) (bool, error) {
 	var result bool
 	err := u.db.QueryRow(ctx, findEmailSQL, email).Scan(&result)
 	return result, err
+}
+
+func (u *userRepository) GetAlbumOwnersIds(ctx context.Context, albumID int) ([]int, error) {
+	rows, err := u.db.Query(ctx, selectAlbumOwnersIdsSQL, albumID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []int
+
+	for rows.Next() {
+		var id int
+		err := rows.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, id)
+	}
+	return result, nil
 }

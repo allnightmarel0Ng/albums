@@ -46,9 +46,9 @@ func (m *moneyOperationsHandler) forkMessages(msg []byte) error {
 	}
 
 	switch operation.Type {
-	case "deposit":
+	case api.Deposit:
 		go m.handleDeposit(operation.UserID, operation.Diff)
-	case "buy":
+	case api.Buy:
 		go m.handleBuy(operation.UserID, operation.OrderID)
 	default:
 		return errors.New("unknown message type")

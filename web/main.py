@@ -1,3 +1,4 @@
+import time
 import requests
 import streamlit as st
 from itertools import islice
@@ -5,9 +6,14 @@ import base64
 import json
 from dotenv import load_dotenv
 import os
+import threading
+import websocket
+
+from globals import notification_list
 
 load_dotenv()
 
+NOTIFICATIONS_URL = "ws://localhost:8081/ws"
 LOGIN_URL = "http://localhost:8080/login"
 REGISTRATION_URL = "http://localhost:8080/registration"
 LOGOUT_URL = "http://localhost:8080/logout"
@@ -18,6 +24,34 @@ ORDERS_URL = "http://localhost:8080/orders/"
 DELETE_ALBUM = "http://localhost:8080/admin-panel/delete/{id}"
 
 ADMIN_PASS = os.getenv("ADMIN_PASS", "")
+
+def connect_to_notifications(jwt):
+    ws_url = NOTIFICATIONS_URL
+
+    def on_message(ws, message):
+        data = json.loads(message)
+        notification_list.append(data)
+        for notification in notification_list:
+            print(notification)
+
+    def on_error(ws, error):
+        notification_list.append({"success": False, "message": f"WebSocket Error: {error}"})
+
+    def on_close(ws, close_status_code, close_msg):
+        notification_list.append({"success": False, "message": "WebSocket connection closed."})
+
+    def on_open(ws):
+        ws.send(json.dumps({"jwt": jwt}))
+
+    ws = websocket.WebSocketApp(
+        ws_url,
+        on_message=on_message,
+        on_error=on_error,
+        on_close=on_close,
+    )
+    ws.on_open = on_open
+
+    threading.Thread(target=ws.run_forever, daemon=True).start()
 
 def fetch_orders():
     headers = get_authorization_header()
@@ -148,8 +182,12 @@ def login():
             if "jwt" in data and "isAdmin" in data:
                 st.session_state["jwt_token"] = data["jwt"]
                 st.session_state["is_admin"] = data["isAdmin"]
+
+                connect_to_notifications(data["jwt"])
+
                 st.success("Logged in successfully!")
                 st.rerun()
+
             else:
                 st.error("Login failed: Invalid response format.")
         except requests.exceptions.RequestException as e:
@@ -188,7 +226,6 @@ def register():
         else:
             st.error("Please fill all required fields.")
 
-# Logout function
 def logout():
     token = st.session_state.get("jwt_token", None)
     if token:
@@ -220,6 +257,8 @@ def display_main_content():
             st.session_state["orders"] = unpaid_orders
         else:
             st.session_state["orders"] = []
+    
+    st.header("Search")
     search_query = st.text_input("Search for artists or albums", "")
     
     if search_query:
@@ -228,7 +267,6 @@ def display_main_content():
         if search_results:
             st.header("Search Results")
 
-            # Display artists
             if search_results.get("artists"):
                 st.subheader("Artists")
                 artist_columns = st.columns(min(len(search_results["artists"]), 5))
@@ -237,8 +275,7 @@ def display_main_content():
                         st.image(get_image_url(artist["imageURL"]), caption=artist["name"], use_container_width=True)
                         link = f"[View Artist Profile](?entity=artists&id={artist['id']})"
                         st.markdown(link, unsafe_allow_html=True)
-
-            # Display albums
+                        
             if search_results.get("albums"):
                 st.subheader("Albums")
                 album_columns = st.columns(min(len(search_results["albums"]), 5))

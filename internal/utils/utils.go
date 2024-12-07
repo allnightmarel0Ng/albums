@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/allnightmarel0Ng/albums/internal/domain/api"
+	"github.com/allnightmarel0Ng/albums/internal/infrastructure/kafka"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 )
@@ -139,26 +140,14 @@ func DeadlineContext(seconds int) (context.Context, context.CancelFunc) {
 	return context.WithDeadline(context.Background(), time.Now().Add(time.Duration(seconds)*time.Second))
 }
 
-func GetParam[T any](c *gin.Context, name string) (T, error) {
-	var result T
-
+func GetParam(c *gin.Context, name string) (int, error) {
 	paramStr, ok := c.Params.Get(name)
 	if !ok {
-		return result, fmt.Errorf("param not found")
+		return 0, fmt.Errorf("param not found")
 	}
 
-	switch any(result).(type) {
-	case int:
-		val, err := strconv.Atoi(paramStr)
-		if err != nil {
-			return result, err
-		}
-		result = any(val).(T)
-	default:
-		return result, fmt.Errorf("unsupported type: %T", result)
-	}
-
-	return result, nil
+	result, err := strconv.Atoi(paramStr)
+	return result, err
 }
 
 func SearchLikeString(str string) string {
@@ -167,4 +156,44 @@ func SearchLikeString(str string) string {
 	result += "%"
 	result = strings.ToLower(result)
 	return result
+}
+
+func Authorize(authHeader string, port string) api.Response {
+	ctx, cancel := DeadlineContext(10)
+	defer cancel()
+
+	request, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://authorization:%s/authorize", port), nil)
+	if err != nil {
+		return InterserviceCommunicationError()
+	}
+	request.Header.Set("Authorization", authHeader)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return InterserviceCommunicationError()
+	}
+	defer response.Body.Close()
+
+	var result api.AuthorizationResponse
+	json.NewDecoder(response.Body).Decode(&result)
+
+	if response.StatusCode != http.StatusOK {
+		return &api.ErrorResponse{
+			Code:  http.StatusUnauthorized,
+			Error: result.Error,
+		}
+	}
+
+	result.Code = http.StatusOK
+	return &result
+}
+
+func ProduceNotificationMessage(message api.NotificationKafkaMessage, producer *kafka.Producer) error {
+	raw, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	return producer.Produce("notifications", raw)
 }

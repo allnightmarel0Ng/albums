@@ -171,7 +171,25 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     init: true
+  
+  notifications:
+    container_name: notifications
+    build:
+      context: ..
+      dockerfile: deployments/go/Dockerfile
+      args:
+        SERVICE_NAME: notifications
+        SERVICE_PORT: ${NOTIFICATIONS_PORT}
+        EXPOSE_PORT: "true"
+    ports:
+      - "${NOTIFICATIONS_PORT}:${NOTIFICATIONS_PORT}"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    init: true  
 
   gateway:
     container_name: gateway

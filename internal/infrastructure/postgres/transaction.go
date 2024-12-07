@@ -11,6 +11,7 @@ type Transaction interface {
 	Rollback(ctx context.Context) error
 
 	Exec(ctx context.Context, sql string, args ...interface{}) error
+	QueryRow(ctx context.Context, sql string, args ...interface{}) Row
 }
 
 type transaction struct {
@@ -28,4 +29,9 @@ func (t *transaction) Rollback(ctx context.Context) error {
 func (t *transaction) Exec(ctx context.Context, sql string, args ...interface{}) error {
 	_, err := t.tx.Exec(ctx, sql, args...)
 	return err
+}
+
+func (t *transaction) QueryRow(ctx context.Context, sql string, args ...interface{}) Row {
+	row := t.tx.QueryRow(ctx, sql, args...)
+	return NewRow(row)
 }

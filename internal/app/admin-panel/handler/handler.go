@@ -58,7 +58,7 @@ func (a *adminPanelHandler) HandleBuyLogs(c *gin.Context) {
 }
 
 func (a *adminPanelHandler) HandleDeleteAlbum(c *gin.Context) {
-	id, err := utils.GetParam[int](c, "id")
+	id, err := utils.GetParam(c, "id")
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,

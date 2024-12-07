@@ -207,7 +207,7 @@ func (g *gatewayHandler) HandleLoadDump(c *gin.Context) {
 }
 
 func handleOrderAction(c *gin.Context, callback func(string, int) (int, []byte)) {
-	id, err := utils.GetParam[int](c, "id")
+	id, err := utils.GetParam(c, "id")
 	if err != nil {
 		utils.Send(c, &api.ErrorResponse{
 			Code:  http.StatusBadRequest,

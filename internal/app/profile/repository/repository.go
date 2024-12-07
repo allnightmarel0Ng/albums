@@ -11,6 +11,7 @@ type ProfileRepository interface {
 	GetUserProfile(ctx context.Context, id int) (model.User, []model.Album, error)
 	GetArtistProfile(ctx context.Context, id int) (model.Artist, []model.Album, error)
 	GetAlbumProfile(ctx context.Context, id int) (model.Album, error)
+	GetAlbumOwnersIds(ctx context.Context, albumId int) (string, []int, error)
 }
 
 type profileRepository struct {
@@ -75,5 +76,20 @@ func (p *profileRepository) GetAlbumProfile(ctx context.Context, id int) (model.
 		return model.Album{}, ctx.Err()
 	default:
 		return p.albums.GetAlbumByID(ctx, id)
+	}
+}
+
+func (p *profileRepository) GetAlbumOwnersIds(ctx context.Context, albumID int) (string, []int, error) {
+	select {
+	case <-ctx.Done():
+		return "", nil, ctx.Err()
+	default:
+		name, err := p.albums.GetAlbumName(ctx, albumID)
+		if err != nil {
+			return "", nil, err
+		}
+
+		ids, err := p.users.GetAlbumOwnersIds(ctx, albumID)
+		return name, ids, err
 	}
 }

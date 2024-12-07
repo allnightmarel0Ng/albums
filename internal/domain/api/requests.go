@@ -5,13 +5,6 @@ type OrderActionRequest struct {
 	AlbumID int `json:"albumID" binding:"required"`
 }
 
-type MoneyOperationKafkaMessage struct {
-	Type    string `json:"type"`
-	UserID  int    `json:"userID"`
-	Diff    uint   `json:"diff,omitempty"`
-	OrderID int    `json:"albumID,omitempty"`
-}
-
 type DepositRequest struct {
 	Money uint `json:"money" binding:"required"`
 }
@@ -31,4 +24,8 @@ type RegistrationRequest struct {
 	Nickname string `json:"nickname" binding:"required"`
 	ImageURL string `json:"imageURL" binding:"required"`
 	Password string `json:"password" binding:"required"`
+}
+
+type NotificationSubscribeRequest struct {
+	Jwt string `json:"jwt" binding:"required"`
 }

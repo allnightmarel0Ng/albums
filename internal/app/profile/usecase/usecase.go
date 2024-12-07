@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/allnightmarel0Ng/albums/internal/app/profile/repository"
@@ -13,6 +14,7 @@ type ProfileUseCase interface {
 	GetUserProfile(id int) api.Response
 	GetArtistProfile(id int) api.Response
 	GetAlbumProfile(id int) api.Response
+	GetAlbumOwnersIds(albumID int) api.Response
 }
 
 type profileUseCase struct {
@@ -102,5 +104,33 @@ func (p *profileUseCase) GetAlbumProfile(id int) api.Response {
 	return &api.AlbumProfileResponse{
 		Code:  http.StatusOK,
 		Album: album,
+	}
+}
+
+func (p *profileUseCase) GetAlbumOwnersIds(albumID int) api.Response {
+	ctx, cancel := utils.DeadlineContext(5)
+	defer cancel()
+
+	name, ids, err := p.repo.GetAlbumOwnersIds(ctx, albumID)
+	if err != nil {
+		switch err {
+		case context.DeadlineExceeded:
+			return &api.ErrorResponse{
+				Code:  http.StatusInternalServerError,
+				Error: "database communication error",
+			}
+		default:
+			return &api.ErrorResponse{
+				Code:  http.StatusNotFound,
+				Error: "unable to find such album",
+			}
+		}
+	}
+
+	log.Print(ids)
+	return &api.AlbumOwnersResponse{
+		Code:      http.StatusOK,
+		Ids:       ids,
+		AlbumName: name,
 	}
 }

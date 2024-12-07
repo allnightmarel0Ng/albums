@@ -57,6 +57,16 @@ func (a *AlbumProfileResponse) GetCode() int {
 	return a.Code
 }
 
+type AlbumOwnersResponse struct {
+	Code      int    `json:"-"`
+	Ids       []int  `json:"userIDs"`
+	AlbumName string `json:"albumName"`
+}
+
+func (a *AlbumOwnersResponse) GetCode() int {
+	return a.Code
+}
+
 type AuthorizationResponse struct {
 	Code    int    `json:"-"`
 	Error   string `json:"error,omitempty"`
@@ -105,4 +115,9 @@ type BuyLogsResponse struct {
 
 func (b *BuyLogsResponse) GetCode() int {
 	return b.Code
+}
+
+type NotificationResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }

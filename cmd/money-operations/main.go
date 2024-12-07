@@ -30,6 +30,12 @@ func main() {
 		log.Fatalf("unable to subscribe to topic %s", err.Error())
 	}
 
+	p, err := kafka.NewProducer(fmt.Sprintf("kafka:%s", conf.KafkaPort), 1)
+	if err != nil {
+		log.Fatalf("unable to create a producer: %s", err.Error())
+	}
+	defer p.Close()
+
 	db, err := postgres.NewDatabase(context.Background(), fmt.Sprintf("postgresql://%s:%s@postgres:%s/%s?sslmode=disable", conf.PostgresUser, conf.PostgresPassword, conf.PostgresPort, conf.PostgresDb))
 	if err != nil {
 		log.Fatalf("unable to establish db connection: %s", err.Error())
@@ -37,7 +43,7 @@ func main() {
 	defer db.Close()
 
 	repo := repository.NewMoneyOperationsRepository(domainRepository.NewUserRepository(db))
-	useCase := usecase.NewMoneyOperationsUseCase(repo)
+	useCase := usecase.NewMoneyOperationsUseCase(repo, p)
 	handler := handler.NewMoneyOperationsHandler(useCase, c)
 	handler.Handle()
 }

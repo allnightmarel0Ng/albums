@@ -9,9 +9,10 @@ import (
 type Producer struct {
 	producer *kafka.Producer
 	keyID    uint
+	ID       uint
 }
 
-func NewProducer(broker string) (*Producer, error) {
+func NewProducer(broker string, id uint) (*Producer, error) {
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": broker,
 		"acks":              "all",
@@ -23,6 +24,7 @@ func NewProducer(broker string) (*Producer, error) {
 	return &Producer{
 		producer: p,
 		keyID:    0,
+		ID:       id,
 	}, nil
 }
 
@@ -31,7 +33,7 @@ func (p *Producer) Produce(topic string, message []byte) error {
 	return p.producer.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 		Value:          message,
-		Key:            []byte(fmt.Sprint(p.keyID)),
+		Key:            []byte(fmt.Sprintf("%d-%d", p.keyID, p.ID)),
 	}, nil)
 }
 

@@ -39,14 +39,18 @@ func (c *Consumer) Close() error {
 }
 
 func (c *Consumer) ConsumeMessagesEternally(dataCallback func([]byte) error, successCallback func(string, ...interface{}), errorCallback func(string, ...interface{})) {
-	saveCallback := func(callback func(string, ...interface{}), format string, v ...interface{}) {
+	if dataCallback == nil {
+		return
+	}
+
+	safeCallback := func(callback func(string, ...interface{}), format string, v ...interface{}) {
 		if callback != nil {
 			callback(format, v...)
 		}
 	}
 
 	// TODO: redis
-	messageKeys := make(map[string]interface{})
+	messageKeys := make(map[string]bool)
 
 	for {
 		msg, err := c.Consume(time.Second)
@@ -55,15 +59,17 @@ func (c *Consumer) ConsumeMessagesEternally(dataCallback func([]byte) error, suc
 			if _, ok := messageKeys[keyStr]; ok {
 				continue
 			}
-			err = dataCallback(msg.Value)
-			messageKeys[keyStr] = nil
+			messageKeys[keyStr] = true
+
+			err := dataCallback(msg.Value)
+
 			if err != nil {
-				go saveCallback(errorCallback, "got an error while consuming messages: %s", err.Error())
+				safeCallback(errorCallback, "got an error while consuming messages: %s", err.Error())
 			} else {
-				go saveCallback(successCallback, "message consumed successfully")
+				safeCallback(successCallback, "message consumed successfully")
 			}
 		} else if !err.(kafka.Error).IsTimeout() {
-			go saveCallback(errorCallback, "consumer error: %s", err.Error())
+			go safeCallback(errorCallback, "consumer error: %s", err.Error())
 		}
 	}
 }

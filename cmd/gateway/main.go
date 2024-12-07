@@ -18,7 +18,7 @@ func main() {
 		log.Fatalf("unable to load config: %s", err.Error())
 	}
 
-	p, err := kafka.NewProducer(fmt.Sprintf("kafka:%s", conf.KafkaPort))
+	p, err := kafka.NewProducer(fmt.Sprintf("kafka:%s", conf.KafkaPort), 2)
 	if err != nil {
 		log.Fatalf("unable to create a producer: %s", err.Error())
 	}
