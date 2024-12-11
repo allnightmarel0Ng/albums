@@ -1,11 +1,14 @@
 # albums
 
-> [!WARNING]
-> This is a personal project with no commercial potential.
-> All money operations are abstract.
-> Work in progress.
+Simple web application to "buy"/explore music albums. Built for educational purposes only. Uses Redis, PostgreSQL, Apache Kafka.
 
 ## Build
+
+### Config
+
+```shell
+cp .env.example .env
+```
 
 ### Backend
 ```shell
@@ -20,3 +23,6 @@ make down # close the application
 pip3 install -r requirements.txt
 streamlit run web/main.py
 ```
+
+## Architecture
+![](img/architecture.png)
