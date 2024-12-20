@@ -29,14 +29,18 @@ func main() {
 	defer db.Close()
 
 	client := redis.NewClient(fmt.Sprintf("redis:%s", conf.RedisPort), "", 0)
+	if client == nil {
+		log.Fatal("unable to connect to redis")
+	}
+
 	defer func() {
 		err = client.Close()
 		if err != nil {
 			log.Fatalf("unable to close redis connection: %s", err.Error())
 		}
 	}()
-	if client.Ping(context.Background()) != nil {
-		log.Fatalf("unable to connect to redis: %s", err.Error())
+	if err = client.Ping(context.Background()); err != nil {
+		log.Fatalf("unable to ping redis: %s", err.Error())
 	}
 
 	repo := repository.NewAuthorizationRepository(domainRepository.NewUserRepository(db), client)

@@ -43,6 +43,7 @@ services:
       retries: 5
   
   postgres:
+    container_name: postgres
     build:
       context: ..
       dockerfile: deployments/postgres/Dockerfile
@@ -62,7 +63,10 @@ services:
       retries: 5
     
   init-postgres:
-    image: postgres:13-alpine
+    container_name: init-postgres
+    build:
+      context: ..
+      dockerfile: deployments/init-postgres/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,8 +79,6 @@ services:
       psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/dml.sql
       psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -f /migrations/dal.sql
       "
-    volumes:
-      - ../migrations:/migrations
 
   authorization:
     container_name: authorization
